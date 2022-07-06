@@ -135,7 +135,10 @@ export default function EditItemScreen()
 
                     <View style={styles.movieRatingsContainer}>
                         {foundMovie.ScoreRotten && <Mk_RottenScore score={foundMovie.ScoreRotten} />}
-                        {foundMovie.imdbRating && <Mk_ImdbScore score={foundMovie.imdbRating} style={{ marginLeft: 8 }} />}
+                        {foundMovie.imdbRating &&
+                            <Mk_ImdbScore
+                                score={foundMovie.imdbRating}
+                                style={{ marginLeft: foundMovie.ScoreRotten ? 8 : 0 }} />}
                     </View>
 
                     <Mk_RoundButton icon={'close'} onPress={() => setFoundMovie(null)} />
