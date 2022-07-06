@@ -5,7 +5,10 @@ const getFromBarcode = (barcode, region) => apiClient.get('/getMovieFromBarcode'
     'region': region
 });
 
+const getFromTitle = (title) => apiClient.get('/getMovieFromTitle', { 'title': title });
+
 export default {
-    getFromBarcode
+    getFromBarcode,
+    getFromTitle
 }
 

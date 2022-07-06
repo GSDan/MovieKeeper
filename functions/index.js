@@ -48,7 +48,7 @@ exports.getMovieFromBarcode = functions.https.onRequest(async (req, resp) =>
       return resp.send("Not found");
     }
 
-    let titles = [];
+    let likelyFormat = "DVD";
 
     if (ebayResp.data.itemSummaries.length > 1)
     {
@@ -73,90 +73,116 @@ exports.getMovieFromBarcode = functions.https.onRequest(async (req, resp) =>
       if (commonWords.length > 0)
       {
         console.log("Common:", commonWords)
-        titles.push(commonWords)
+
+        let processedRes = processListingTitle(commonWords, likelyFormat)
+        likelyFormat = processedRes.likelyFormat;
+
+        const commonResp = await queryOmdb(processedRes.title);
+        if (commonResp.success)
+        {
+          commonResp.likelyFormat = likelyFormat;
+          return resp.send(commonResp);
+        }
       }
     }
 
     for (let i = 0; i < ebayResp.data.itemSummaries.length; i++)
     {
-      titles.push(ebayResp.data.itemSummaries[i].title);
-    }
+      let thisTitle = ebayResp.data.itemSummaries[i].title;
+      let processedRes = processListingTitle(thisTitle, likelyFormat)
+      likelyFormat = processedRes.likelyFormat;
 
-    let likelyFormat = "DVD";
-    let lastTitle = null;
-
-    for (let i = 0; i < titles.length && i < 5; i++)
-    {
-      lastTitle = titles[i];
-      lastTitle = lastTitle.toLowerCase();
-
-      // strip format names, saving any matches as the potential format
-      // Once set as 4K it can't be overridden, as something could be listed as '4K Blu Ray'
-      toStrip4k.forEach((s) =>
+      const omdbResp = await queryOmdb(processedRes.title);
+      if (omdbResp.success)
       {
-        if (lastTitle.includes(s))
-        {
-          likelyFormat = "4K";
-          lastTitle = lastTitle.replaceAll(s, '');
-        }
-      });
-      toStripBr.forEach((s) =>
-      {
-        if (lastTitle.includes(s))
-        {
-          if (likelyFormat === "DVD")
-          {
-            likelyFormat = "Blu-ray";
-          }
-          lastTitle = lastTitle.replaceAll(s, '');
-        }
-      });
-      toStripMisc.forEach((s) =>
-      {
-        lastTitle = lastTitle.replaceAll(s, '');
-      });
-
-      // strip of extra descriptors in brackets e.g. (4k UHD, 2019)
-      lastTitle = lastTitle.replace(/\([^)]*\)*/g, "");
-      // strip stuff in asterisks e.g. *NEW - SEALED*
-      lastTitle = lastTitle.replace(/\*([^,*]+)\*/g, "");
-      // strip stuff in square brackets e.g. [2D - 3D]
-      lastTitle = lastTitle.replace(/\[(.*?)\]/g, "");
-      // strip the region detail (e.g. 'region 4', 'region b')
-      lastTitle = lastTitle.replace(/region . /g, "");
-      // strip everything after a hyphen 
-      lastTitle = lastTitle.replace(/\-(.*)/g, "");
-
-      // strip NEW from the end if it's there
-      if (lastTitle.endsWith(' new'))
-      {
-        lastTitle = lastTitle.substring(0, lastTitle.length - 3);
-      }
-
-      titles[i] = lastTitle.trim();
-    }
-
-    for (const title of titles) 
-    {
-      const omdbResp = await axios.get(`https://www.omdbapi.com/?t=${title}&apikey=${process.env.OMDB_KEY}`);
-      if (omdbResp && omdbResp.data && omdbResp.data.Response === "True")
-      {
-        console.log("Found!", omdbResp.data.Title)
-        return resp.send({ "success": true, "likelyFormat": likelyFormat, "data": omdbResp.data });
-      }
-      else
-      {
-        console.log("Failed to find", title);
+        omdbResp.likelyFormat = likelyFormat;
+        return resp.send(omdbResp);
       }
     }
 
-    return resp.send({ "success": false, "likelyFormat": likelyFormat, "data": titles[0] });
+    return resp.send({ "success": false, "likelyFormat": likelyFormat, "data": ebayResp.data.itemSummaries[0] });
   }
   catch (error)
   {
     console.log(error);
     return resp.send(error);
   }
+});
+
+const processListingTitle = function (title, likelyFormat) 
+{
+  title = title.toLowerCase();
+
+  // strip format names, saving any matches as the potential format
+  // Once set as 4K it can't be overridden, as something could be listed as '4K Blu Ray'
+  toStrip4k.forEach((s) =>
+  {
+    if (title.includes(s))
+    {
+      likelyFormat = "4K";
+      title = title.replaceAll(s, '');
+    }
+  });
+  toStripBr.forEach((s) =>
+  {
+    if (title.includes(s))
+    {
+      if (likelyFormat === "DVD")
+      {
+        likelyFormat = "Blu-ray";
+      }
+      title = title.replaceAll(s, '');
+    }
+  });
+  toStripMisc.forEach((s) =>
+  {
+    title = title.replaceAll(s, '');
+  });
+
+  // strip of extra descriptors in brackets e.g. (4k UHD, 2019)
+  title = title.replace(/\([^)]*\)*/g, "");
+  // strip stuff in asterisks e.g. *NEW - SEALED*
+  title = title.replace(/\*([^,*]+)\*/g, "");
+  // strip stuff in square brackets e.g. [2D - 3D]
+  title = title.replace(/\[(.*?)\]/g, "");
+  // strip the region detail (e.g. 'region 4', 'region b')
+  title = title.replace(/region . /g, "");
+  // strip everything after a hyphen 
+  title = title.replace(/\-(.*)/g, "");
+
+  // strip NEW from the end if it's there
+  if (title.endsWith(' new'))
+  {
+    title = title.substring(0, title.length - 3);
+  }
+
+  return {
+    'title': title.trim(),
+    'likelyFormat': likelyFormat
+  }
+}
+
+const queryOmdb = async function (title)
+{
+  const omdbResp = await axios.get(`https://www.omdbapi.com/?t=${title}&apikey=${process.env.OMDB_KEY}`);
+  if (omdbResp && omdbResp.data && omdbResp.data.Response === "True")
+  {
+    console.log("Found!", omdbResp.data.Title)
+    return { "success": true, "data": omdbResp.data };
+  }
+
+  console.log("Failed to find", title);
+  return { "success": false }
+}
+
+exports.getMovieFromTitle = functions.https.onRequest(async (req, resp) =>
+{
+  const omdbResp = await queryOmdb(req.query.title);
+  if (omdbResp.success)
+  {
+    return resp.send(omdbResp);
+  }
+  return resp.send({ "success": false });
 });
 
 // Currently unused

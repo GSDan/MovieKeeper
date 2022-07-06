@@ -3,6 +3,8 @@ import React from 'react'
 
 import colours from "../config/colours";
 import Stars from "../components/Mk_Stars";
+import Mk_RottenScore from './Mk_RottenScore';
+import Mk_ImdbScore from './Mk_ImdbScore';
 
 export default function Mk_Card({ title, rated, year, image, format, runtime, rotten, imdbRating, userRating })
 {
@@ -22,14 +24,8 @@ export default function Mk_Card({ title, rated, year, image, format, runtime, ro
                         isTouchable={false}
                         onPress={(score) => console.log(score)} />
                     <View style={styles.ratingsContainer}>
-                        <Image style={styles.tomatoIcon} source={parseInt(rotten) > 59 ?
-                            require("../assets/tomatometer-fresh.png") :
-                            require("../assets/tomatometer-rotten.png")} />
-                        <Text>{rotten}</Text>
-                        <Image
-                            style={styles.imdbIcon}
-                            source={require("../assets/imdb.png")} />
-                        <Text>{imdbRating}</Text>
+                        <Mk_RottenScore score={rotten} />
+                        <Mk_ImdbScore score={imdbRating} style={{ marginLeft: 8 }} />
                     </View>
 
                 </View>
