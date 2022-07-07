@@ -3,8 +3,6 @@ import React from 'react'
 
 const Mk_ImdbScore = ({ score, style }) =>
 {
-
-
     return (
         <>
             <Image
