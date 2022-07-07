@@ -1,7 +1,7 @@
 import { StyleSheet, View, TouchableOpacity, Image } from 'react-native'
 import React from 'react'
 
-export default function Mk_Stars({ value, isTouchable, onPress })
+export default function Mk_Stars({ value, isTouchable, onPress, containerStyle, starStyle })
 {
     const img_star = require("../assets/star_filled.png");
     const img_starEmpty = require("../assets/star_empty.png");
@@ -25,7 +25,7 @@ export default function Mk_Stars({ value, isTouchable, onPress })
                         }
                     }}>
                     <Image
-                        style={styles.StarImage}
+                        style={[styles.StarImage, starStyle]}
                         source={
                             i <= value
                                 ? img_star
@@ -40,25 +40,23 @@ export default function Mk_Stars({ value, isTouchable, onPress })
     };
 
     return (
-        <View style={styles.MainContainer}>
+        <View style={[styles.MainContainer, containerStyle]}>
             {/*View to hold our Stars*/}
-            <View style={styles.childView}>{constructStars()}</View>
+            <View style={[styles.childView]}>{constructStars()}</View>
         </View>
     )
 }
 
 const styles = StyleSheet.create({
     MainContainer: {
-        flex: 1,
         paddingTop: Platform.OS === 'ios' ? 20 : 0,
     },
     childView: {
-        flexDirection: 'row',
-        marginTop: 10,
+        flexDirection: 'row'
     },
     StarImage: {
-        width: 18,
-        height: 18,
+        width: 22,
+        height: 22,
         resizeMode: 'cover',
     },
 });

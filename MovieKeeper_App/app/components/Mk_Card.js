@@ -22,6 +22,7 @@ export default function Mk_Card({ title, rated, year, image, format, runtime, ro
                     <Stars
                         value={userRating}
                         isTouchable={false}
+                        containerStyle={{ marginTop: 8 }}
                         onPress={(score) => console.log(score)} />
                     <View style={styles.ratingsContainer}>
                         <Mk_RottenScore score={rotten} />

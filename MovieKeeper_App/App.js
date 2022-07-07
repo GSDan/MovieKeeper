@@ -12,7 +12,7 @@ import ProfileScreen from './app/screens/ProfileScreen'
 
 const AddStack = createNativeStackNavigator();
 const AddStackNavigator = () => (
-  <AddStack.Navigator mode="modal">
+  <AddStack.Navigator>
     <AddStack.Screen name="Search" options={{ headerShown: false }} component={AddItemScreen} />
     <AddStack.Screen
       name="Edit"

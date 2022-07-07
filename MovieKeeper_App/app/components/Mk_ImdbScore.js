@@ -6,7 +6,7 @@ const Mk_ImdbScore = ({ score, style }) =>
     return (
         <>
             <Image
-                style={[styles.imdbIcon, style]}
+                style={[style, styles.imdbIcon]}
                 source={require("../assets/imdb.png")} />
             <Text>{score}</Text>
         </>

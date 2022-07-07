@@ -4,10 +4,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import colours from '../config/colours';
 
-const Mk_RoundButton = ({ icon, onPress }) =>
+const Mk_RoundButton = ({ icon, onPress, style }) =>
 {
     return (
-        <TouchableOpacity style={styles.button} onPress={onPress}>
+        <TouchableOpacity style={[styles.button, style]} onPress={onPress}>
             <MaterialCommunityIcons
                 style={styles.buttonIcon}
                 name={icon}
@@ -22,7 +22,6 @@ const styles = StyleSheet.create({
         height: 40,
         borderRadius: 40,
         justifyContent: 'center',
-        marginLeft: 10,
         backgroundColor: colours.secondary
     },
     buttonIcon: {

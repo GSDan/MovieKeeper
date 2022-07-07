@@ -61,7 +61,7 @@ export default function AddItemScreen({ navigation })
         }
     };
 
-    const formatMovieData = (data) =>
+    const formatMovieData = (data, likelyFormat = null) =>
     {
         const rotten = data.Ratings.find(r => r.Source === 'Rotten Tomatoes');
 
@@ -71,7 +71,7 @@ export default function AddItemScreen({ navigation })
         }
 
         // TODO check if we have this movie already in the library
-        navigation.navigate("Edit", { 'movie': data, 'mode': 'add' })
+        navigation.navigate("Edit", { 'movie': data, 'mode': 'add', 'likelyFormat': likelyFormat })
     }
 
     const searchOmdb = async (title) =>
@@ -80,12 +80,16 @@ export default function AddItemScreen({ navigation })
 
         setLoading(true);
         const resp = await libraryItemsApi.getFromTitle(title);
-        setLoading(false);
 
-        if (!resp.ok || !resp.data.success) return setError(true)
+        if (!resp.ok || !resp.data.success)
+        {
+            setLoading(false);
+            return setError(true)
+        }
 
         setError(false);
         formatMovieData(resp.data.data)
+        setLoading(false);
     }
 
     const handleBarCodeScanned = async ({ type, data }) =>
@@ -99,7 +103,7 @@ export default function AddItemScreen({ navigation })
         if (!resp.ok || !resp.data.success) return setError(true)
 
         setError(false);
-        formatMovieData(resp.data.data)
+        formatMovieData(resp.data.data, resp.data.likelyFormat)
     };
 
     return (
@@ -169,6 +173,7 @@ export default function AddItemScreen({ navigation })
 
                         <Mk_RoundButton
                             icon={'magnify'}
+                            style={{ marginLeft: 10 }}
                             onPress={() => searchOmdb(titleInput)} />
                     </View>
 
