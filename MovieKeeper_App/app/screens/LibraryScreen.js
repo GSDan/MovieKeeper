@@ -1,81 +1,145 @@
-import { StyleSheet, FlatList, Text } from 'react-native'
-import React from 'react'
+import { StyleSheet, FlatList, Text, RefreshControl, View, TouchableOpacity, Modal, Button } from 'react-native'
+import React, { useState, useContext, useLayoutEffect, useEffect } from 'react'
+import { useFocusEffect } from '@react-navigation/native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import Screen from "../components/Mk_Screen";
 import Card from "../components/Mk_Card";
 import colours from "../config/colours";
+import { getMovieLibrary } from '../api/libraryItems';
+import { AuthContext } from '../hooks/userAuthentication';
 
-const listings = [
+const sortFields = [
     {
-        "Title": "Shrek",
-        "UserRating": 3,
-        "Format": "VHS",
-        "Year": "2001",
-        "Rated": "PG",
-        "Runtime": "90 min",
-        "Genre": "Animation, Adventure, Comedy",
-        "Director": "Andrew Adamson, Vicky Jenson",
-        "Poster": "https://m.media-amazon.com/images/M/MV5BOGZhM2FhNTItODAzNi00YjA0LWEyN2UtNjJlYWQzYzU1MDg5L2ltYWdlL2ltYWdlXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_SX300.jpg",
-        "Score_IMDB": "7.9",
-        "Score_Rotten": "88%",
-        "imdbID": "tt0126029",
-        "Type": "movie",
-        "Response": "True"
+        'Label': 'Title',
+        'Field': 'Title'
     },
     {
-        "Title": "Star Wars Episode IV: A New Hope",
-        "Format": "4K",
-        "UserRating": 4,
-        "Year": "1977",
-        "Rated": "PG",
-        "Runtime": "121 min",
-        "Genre": "Action, Adventure, Fantasy",
-        "Director": "George Lucas",
-        "Poster": "https://m.media-amazon.com/images/M/MV5BNzg4MjQxNTQtZmI5My00YjMwLWJlMjUtMmJlY2U2ZWFlNzY1XkEyXkFqcGdeQXVyODk4OTc3MTY@._V1_SX300.jpg",
-        "Score_Rotten": "93%",
-        "Score_IMDB": "8.6",
-        "imdbID": "tt0076759",
-        "Type": "movie",
-        "Response": "True"
+        'Label': 'Date Added',
+        'Field': 'Added'
     },
     {
-        "Title": "Morbius", "Year": "2022", "Rated": "PG-13", "Released": "01 Apr 2022", "Runtime": "104 min",
-        "Format": "4K",
-        "UserRating": 1,
-        "Genre": "Action, Adventure, Horror", "Director": "Daniel Espinosa",
-        "Poster": "https://m.media-amazon.com/images/M/MV5BNTA3N2Q0ZTAtODJjNy00MmQzLWJlMmItOGFmNDI0ODgxN2QwXkEyXkFqcGdeQXVyMTM0NTUzNDIy._V1_SX300.jpg",
-        "Score_Rotten": "16%",
-        "Score_IMDB": "5.1",
-        "imdbID": "tt5108870", "Type": "movie", "DVD": "N/A", "BoxOffice": "$73,858,303", "Production": "N/A", "Website": "N/A", "Response": "True"
-    }
+        'Label': 'Your Rating',
+        'Field': 'UserRating'
+    },
+    {
+        'Label': 'IMDB Score',
+        'Field': 'imdbRating'
+    },
+    {
+        'Label': 'Rotten %',
+        'Field': 'ScoreRotten'
+    },
+    {
+        'Label': 'Release Year',
+        'Field': 'Year'
+    },
+    {
+        'Label': 'Runtime',
+        'Field': 'Runtime'
+    },
 ];
 
-export default function LibraryScreen()
+export default function LibraryScreen({ navigation })
 {
+    const [refreshing, setRefreshing] = useState(false);
+    const [libraryData, setLibraryData] = useState([]);
+    const [sortedData, setSortedData] = useState([]);
+    const [sortBy, setSortBy] = useState('Title');
+    const [sortAsc, setSortAsc] = useState(true);
+    const [rerenderList, setRerenderList] = useState(true)
+    const [showSortFilterModal, setShowSortFilterModal] = useState(false);
+    const authContext = useContext(AuthContext);
+
+    useLayoutEffect(() =>
+    {
+        navigation.setOptions({
+            headerRight: () => (
+                <View style={{ flexDirection: "row" }}>
+                    <TouchableOpacity onPress={() => setShowSortFilterModal(true)}>
+                        <MaterialCommunityIcons
+                            style={{ color: colours.primary }}
+                            name={'filter'}
+                            size={30} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setSortAsc(!sortAsc)}>
+                        <MaterialCommunityIcons
+                            style={{ color: colours.secondary, marginLeft: 15 }}
+                            name={sortAsc ? 'arrow-down' : 'arrow-up'}
+                            size={30} />
+                    </TouchableOpacity>
+                </View>
+            ),
+
+        });
+    }, [navigation, sortAsc]);
+
+    useEffect(() =>
+    {
+        const sorted = libraryData.sort((lhs, rhs) =>
+        {
+            if (sortAsc) return lhs[sortBy].localeCompare(rhs[sortBy])
+            return rhs[sortBy].localeCompare(lhs[sortBy]);
+        });
+
+        setSortedData(sorted);
+        setRerenderList(!rerenderList);
+    }, [sortBy, sortAsc, libraryData])
+
+    useFocusEffect(
+        () => { if (authContext.shouldRefreshContent) fetchLibraryData(); }
+    ), [];
+
+    const fetchLibraryData = async () =>
+    {
+        try
+        {
+            if (refreshing) return;
+
+            setRefreshing(true);
+            const result = await getMovieLibrary();
+            setLibraryData(result.data);
+            authContext.setShouldRefreshContent(false);
+            setRefreshing(false);
+        }
+        catch (error)
+        {
+            setRefreshing(false);
+            console.log(error);
+        }
+    }
+
+    const openForEditing = (movieData) =>
+    {
+        navigation.navigate("Edit", { 'movie': movieData, 'mode': 'edit', 'formats': movieData.Formats })
+    }
+
     return (
         <Screen style={styles.screen}>
             <FlatList
                 style={styles.list}
-                data={listings}
-                keyExtractor={(listing) => listing.imdbID.toString()}
+                data={sortedData}
+                extraData={rerenderList}
+                keyExtractor={(listing) => listing.imdbID}
                 renderItem={({ item }) => (
                     <Card
-                        title={item.Title}
-                        rated={item.Rated}
-                        year={item.Year}
-                        image={item.Poster}
-                        userRating={item.UserRating}
-                        format={item.Format}
-                        runtime={item.Runtime}
-                        rotten={item.Score_Rotten}
-                        imdbRating={item.Score_IMDB}
-                    />
+                        movie={item}
+                        onPress={() => openForEditing(item)} />
                 )}
+                ListHeaderComponent={<View />}
+                ListHeaderComponentStyle={{ height: 20 }}
                 ListFooterComponentStyle={styles.listFooter}
                 ListFooterComponent={<Text style={styles.legal} numberOfLines={2}>
                     The Fresh Tomato® and Rotten Splat® logos are registered trademarks of Fandango Media LLC.
                 </Text>}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={fetchLibraryData} />
+                }
             />
+
+            <Modal visible={showSortFilterModal} animationType={'slide'}>
+                <Button title='Boop' onPress={() => setShowSortFilterModal(false)} />
+            </Modal>
 
         </Screen>
     )
@@ -83,12 +147,8 @@ export default function LibraryScreen()
 
 const styles = StyleSheet.create({
     screen: {
-        paddingLeft: 10,
-        paddingRight: 10,
+        paddingTop: 0,
         backgroundColor: colours.light,
-    },
-    list: {
-
     },
     listFooter: {
         marginBottom: 7
@@ -97,5 +157,8 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: colours.medium,
         fontSize: 8
+    },
+    navButton: {
+        marginHorizontal: 3
     }
 })

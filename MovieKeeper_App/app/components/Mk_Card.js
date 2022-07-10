@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Image } from 'react-native'
+import { StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native'
 import React from 'react'
 
 import colours from "../config/colours";
@@ -6,32 +6,31 @@ import Stars from "../components/Mk_Stars";
 import Mk_RottenScore from './Mk_RottenScore';
 import Mk_ImdbScore from './Mk_ImdbScore';
 
-export default function Mk_Card({ title, rated, year, image, format, runtime, rotten, imdbRating, userRating })
+export default function Mk_Card({ movie, onPress })
 {
     return (
-        <View>
+        <TouchableOpacity onPress={onPress}>
             <View style={styles.card}>
-                <Image style={styles.image} source={{ uri: image }} />
+                <Image style={styles.image} source={{ uri: movie.Poster }} />
                 <View style={styles.detailsContainer}>
                     <Text style={styles.title} numberOfLines={2}>
-                        {title}
+                        {movie.Title}
                     </Text>
                     <Text style={styles.subTitle} numberOfLines={2}>
-                        {rated} | {year} | {runtime} | {format}
+                        {movie.Rated} | {movie.Year} | {movie.Runtime} | {(movie.Formats.join(', '))}
                     </Text>
                     <Stars
-                        value={userRating}
+                        value={movie.UserRating}
                         isTouchable={false}
-                        containerStyle={{ marginTop: 8 }}
-                        onPress={(score) => console.log(score)} />
+                        containerStyle={{ marginTop: 8 }} />
                     <View style={styles.ratingsContainer}>
-                        <Mk_RottenScore score={rotten} />
-                        <Mk_ImdbScore score={imdbRating} style={{ marginLeft: 8 }} />
+                        <Mk_RottenScore score={movie.ScoreRotten} />
+                        <Mk_ImdbScore score={movie.imdbRating} style={{ marginLeft: 8 }} />
                     </View>
 
                 </View>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 }
 
@@ -39,10 +38,12 @@ const styles = StyleSheet.create({
     card: {
         borderRadius: 15,
         backgroundColor: colours.white,
+        marginHorizontal: 12,
         marginBottom: 20,
         overflow: "hidden",
         flexDirection: "row",
-        flexGrow: 10
+        flexGrow: 10,
+        minHeight: 150
     },
     detailsContainer: {
         padding: 15,
@@ -61,7 +62,7 @@ const styles = StyleSheet.create({
         marginRight: 15,
         fontWeight: "bold",
         fontSize: 18,
-        minHeight: 40,
+        minHeight: 30,
         textAlignVertical: 'center'
     },
     ratingsContainer: {

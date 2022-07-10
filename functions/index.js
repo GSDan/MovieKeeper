@@ -2,8 +2,10 @@ const functions = require("firebase-functions");
 const EbayAuthToken = require("ebay-oauth-nodejs-client");
 const axios = require("axios");
 const CircularJSON = require('circular-json');
+const admin = require('firebase-admin');
 
-const ebayScopes = ["https://api.ebay.com/oauth/api_scope", "https://api.ebay.com/oauth/api_scope/sell.inventory"];
+admin.initializeApp();
+const db = admin.firestore();
 
 const ebayAuthToken = new EbayAuthToken({
   clientId: process.env.EBAY_APPID,
@@ -13,7 +15,29 @@ const ebayAuthToken = new EbayAuthToken({
 
 const toStrip4k = ["ultra hd", "ultra-hd", "uhd", "4k", "hdr"];
 const toStripBr = ["+ blu-ray", "blu-ray +", "blu ray", "blu-ray", "bluray", " blu ", "3d"];
-const toStripMisc = ["dvd", "P&P free", "free P&P", "brand new", "& sealed", "and sealed", "region free", "slipcover", "fast dispatch"]
+const toStripMisc = [
+  "dvd",
+  "P&P free",
+  "free P&P",
+  "brand new",
+  "& sealed",
+  "and sealed",
+  "new sealed",
+  "new/sealed",
+  "region free",
+  "slipcover",
+  "steelbook",
+  "steel book",
+  "fast dispatch",
+  "the final cut",
+  "final cut",
+  " + ",
+  "director's cut",
+  "special edition",
+  "limited edition",
+  " uk",
+  " usa"
+]
 
 // https://stackoverflow.com/a/7313467
 String.prototype.replaceAll = function (strReplace, strWith)
@@ -23,17 +47,17 @@ String.prototype.replaceAll = function (strReplace, strWith)
   return this.replace(reg, strWith);
 };
 
-exports.getMovieFromBarcode = functions.https.onRequest(async (req, resp) =>
+exports.getMovieFromBarcode = functions.https.onCall(async (data, context) =>
 {
   try
   {
-    console.log(req.query)
+    if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
 
-    const barcode = req.query.barcode;
+    const barcode = data.barcode;
     const tokenResp = await ebayAuthToken.getApplicationToken('PRODUCTION', ['https://api.ebay.com/oauth/api_scope']);
     const headers = {
       'Authorization': `Bearer ${CircularJSON.parse(tokenResp).access_token}`,
-      'X-EBAY-C-MARKETPLACE-ID': req.query.region ? req.query.region : 'EBAY_US'
+      'X-EBAY-C-MARKETPLACE-ID': data.region ? data.region : 'EBAY_US'
     };
 
     let ebayResp = await axios.get(`https://api.ebay.com/buy/browse/v1/item_summary/search?gtin=${barcode}`, { 'headers': headers });
@@ -45,10 +69,12 @@ exports.getMovieFromBarcode = functions.https.onRequest(async (req, resp) =>
 
     if (!ebayResp || !ebayResp.data || ebayResp.data.total == 0)
     {
-      return resp.send("Not found");
+      throw new Error("No results found");
     }
 
     let likelyFormat = "DVD";
+
+    // console.log(ebayResp.data.itemSummaries)
 
     if (ebayResp.data.itemSummaries.length > 1)
     {
@@ -56,15 +82,21 @@ exports.getMovieFromBarcode = functions.https.onRequest(async (req, resp) =>
       let commonWords = "";
       const wordsInFirstRes = ebayResp.data.itemSummaries[0].title.split(" ");
       const wordsInSecondRes = ebayResp.data.itemSummaries[1].title.split(" ");
+
       for (let i = 0; i < wordsInFirstRes.length; i++)
       {
-        if (wordsInFirstRes[i] === "") continue;
+        // skip blanks and instances of 'the' 
+        // 'The' can sometimes be out of order (e.g. 'Avengers, The') causing mismatches
+        if (wordsInFirstRes[i] === "" || wordsInFirstRes[i].toLowerCase() == "the") continue;
 
         for (let j = 0; j < wordsInSecondRes.length; j++)
         {
-          if (wordsInFirstRes[i].toLowerCase() == wordsInSecondRes[j].toLowerCase())
+          // compare to lowercase without commas
+          const lhs = wordsInFirstRes[i].toLowerCase().replace(/,/g, '');
+          const rhs = wordsInFirstRes[j].toLowerCase().replace(/,/g, '');
+          if (lhs == rhs)
           {
-            commonWords = `${commonWords} ${wordsInFirstRes[i]}`;
+            commonWords = `${commonWords} ${lhs}`;
             break;
           }
         }
@@ -81,7 +113,7 @@ exports.getMovieFromBarcode = functions.https.onRequest(async (req, resp) =>
         if (commonResp.success)
         {
           commonResp.likelyFormat = likelyFormat;
-          return resp.send(commonResp);
+          return commonResp;
         }
       }
     }
@@ -89,18 +121,20 @@ exports.getMovieFromBarcode = functions.https.onRequest(async (req, resp) =>
     for (let i = 0; i < ebayResp.data.itemSummaries.length; i++)
     {
       let thisTitle = ebayResp.data.itemSummaries[i].title;
+      console.log(thisTitle);
       let processedRes = processListingTitle(thisTitle, likelyFormat)
       likelyFormat = processedRes.likelyFormat;
+      console.log(processedRes)
 
       const omdbResp = await queryOmdb(processedRes.title);
       if (omdbResp.success)
       {
         omdbResp.likelyFormat = likelyFormat;
-        return resp.send(omdbResp);
+        return omdbResp;
       }
     }
 
-    return resp.send({ "success": false, "likelyFormat": likelyFormat, "data": ebayResp.data.itemSummaries[0] });
+    return { "success": false, "likelyFormat": likelyFormat, "data": ebayResp.data.itemSummaries[0] };
   }
   catch (error)
   {
@@ -150,6 +184,8 @@ const processListingTitle = function (title, likelyFormat)
   // strip everything after a hyphen 
   title = title.replace(/\-(.*)/g, "");
 
+  title = title.trim();
+
   // strip NEW from the end if it's there
   if (title.endsWith(' new'))
   {
@@ -175,63 +211,87 @@ const queryOmdb = async function (title)
   return { "success": false }
 }
 
-exports.getMovieFromTitle = functions.https.onRequest(async (req, resp) =>
+exports.getMovieFromTitle = functions.https.onCall(async (data, context) =>
 {
-  const omdbResp = await queryOmdb(req.query.title);
+  if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
+
+  const omdbResp = await queryOmdb(data.title);
   if (omdbResp.success)
   {
-    return resp.send(omdbResp);
+    return omdbResp;
   }
-  return resp.send({ "success": false });
+  return { "success": false };
 });
 
-// Currently unused
-exports.ebayOauthGetUrl = functions.https.onRequest(async (req, resp) =>
+exports.getMovieLibrary = functions.https.onCall(async (data, context) =>
 {
-  try
-  {
-    const authUrl = ebayAuthToken.generateUserAuthorizationUrl("PRODUCTION", ebayScopes);
-    resp.send(authUrl);
-  }
-  catch (err)
-  {
-    return resp.status(500).send(err);
-  }
-});
+  if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
 
-// Currently unused
-exports.ebayOauthGetTokens = functions.https.onRequest(async (req, resp) =>
-{
-  try
-  {
-    if (!req.query.ebaycode)
+  const userCol = await db.collection(`Users/${context.auth.uid}/Movies`).get();
+
+  const movieDocs = await Promise.all(
+    userCol.docs.map(async (doc) =>
     {
-      return resp.status(400).send("Ebay code required");
+      const movDoc = await db.doc(`Movies/${doc.id}`).get();
+      return {
+        ...movDoc.data(),
+        ...doc.data()
+      };
+    })
+  );
+
+  return movieDocs;
+});
+
+exports.deleteFromLibrary = functions.https.onCall(async (data, context) =>
+{
+  if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
+
+  const mediaType = data.Type === 'movie' ? 'Movies' : 'TV';
+
+  return await db.collection(`Users/${context.auth.uid}/${mediaType}`).doc(data.id).delete();
+});
+
+exports.addMovieToLibrary = functions.https.onCall(async (data, context) =>
+{
+  if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
+
+  const mediaType = data.Type === 'movie' ? 'Movies' : 'TV';
+
+  const mediaRef = db.collection(mediaType).doc(data.imdbID);
+
+  if (!(await mediaRef.get()).exists)
+  {
+    console.log(`${data.imdbID} (${data.Title}) does not yet exist`)
+    let newData = {
+      'Actors': data.Actors,
+      'Director': data.Director,
+      'Genre': data.Genre,
+      'Poster': data.Poster,
+      'Rated': data.Rated,
+      'Runtime': data.Runtime,
+      'Title': data.Title,
+      'Type': data.Type,
+      'Year': data.Year,
+      'imdbID': data.imdbID,
+      'imdbRating': data.imdbRating
     }
 
-    const accessToken = await ebayAuthToken.exchangeCodeForAccessToken("PRODUCTION", req.query.ebaycode);
-    resp.send(accessToken);
-  }
-  catch (err)
-  {
-    return resp.status(500).send(err);
-  }
-});
-
-exports.ebayOathRefreshToken = functions.https.onRequest(async (req, resp) =>
-{
-  try
-  {
-    if (!req.query.refreshToken)
+    if (data.Ratings)
     {
-      return resp.status(400).send("Ebay refresh token required");
+      const rotten = data.Ratings.find(r => r.Source === 'Rotten Tomatoes');
+      if (rotten) newData.ScoreRotten = rotten.Value;
     }
+    else if (data.ScoreRotten) newData.ScoreRotten;
 
-    const accessToken = await ebayAuthToken.getAccessToken("PRODUCTION", req.query.refreshToken, ebayScopes);
-    resp.send(accessToken);
+    await mediaRef.set(newData);
   }
-  catch (err)
-  {
-    return resp.status(500).send(err);
-  }
+
+  const libraryRef = db.collection('Users').doc(context.auth.uid).collection(mediaType).doc(data.imdbID);
+  return libraryRef.set(
+    {
+      'UserRating': data.UserRating,
+      'Added': Date.now(),
+      'Formats': data.OwnedFormats
+    });
 });

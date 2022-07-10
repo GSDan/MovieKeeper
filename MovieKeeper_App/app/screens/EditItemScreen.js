@@ -1,15 +1,16 @@
-import { StyleSheet, Text, View, Image, ActivityIndicator } from 'react-native'
-import React, { useState, useEffect } from 'react'
-import Checkbox from 'expo-checkbox';
+import { StyleSheet, Text, View, Image, ActivityIndicator, Alert } from 'react-native'
+import React, { useState, useEffect, useContext } from 'react'
+import Toast from 'react-native-root-toast';
 
 import Screen from "../components/Mk_Screen";
 import colours from '../config/colours';
-import libraryItemsApi from '../api/libraryItems';
+import { addToLibrary, deleteFromLibrary } from '../api/libraryItems';
 import Stars from "../components/Mk_Stars";
 import Mk_RoundButton from '../components/Mk_RoundButton';
 import Mk_RottenScore from '../components/Mk_RottenScore';
 import Mk_ImdbScore from '../components/Mk_ImdbScore';
-
+import Mk_FormatCheckbox from '../components/Mk_FormatCheckbox';
+import { AuthContext } from '../hooks/userAuthentication';
 
 export default function EditItemScreen({ navigation, route })
 {
@@ -18,39 +19,124 @@ export default function EditItemScreen({ navigation, route })
     const [uhdChecked, setUhdChecked] = useState(false);
     const [userRating, setUserRating] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(false);
+    const [changed, setChanged] = useState(true);
+    const [error, setError] = useState(null);
+    const authContext = useContext(AuthContext);
 
     const movie = route.params.movie;
     const mode = route.params.mode;
+    const existingFormats = route.params.formats;
+
+    const addFormat = (format) =>
+    {
+        switch (format)
+        {
+            case '4K':
+                setUhdChecked(true);
+                break;
+            case 'Blu-ray':
+                setBluChecked(true);
+                break;
+            case 'DVD':
+                setDvdChecked(true);
+                break;
+        }
+    }
 
     useEffect(() =>
     {
         (async () =>
         {
-            if (route.params.likelyFormat)
+            if (mode === 'edit')
             {
-                switch (route.params.likelyFormat)
+                setUserRating(movie.UserRating)
+
+                if (existingFormats)
                 {
-                    case '4K':
-                        setUhdChecked(true);
-                        break;
-                    case 'Blu-ray':
-                        setBluChecked(true);
-                        break;
-                    case 'DVD':
-                        setDvdChecked(true);
-                        break;
-                    default:
-                        console.log('What is this', route.params.likelyFormat)
+                    existingFormats.forEach(format =>
+                    {
+                        addFormat(format);
+                    });
                 }
+                setChanged(false);
+            }
+            else if (route.params.likelyFormat)
+            {
+                addFormat(route.params.likelyFormat);
             }
         })();
     }, []);
 
+    const saveToDb = async () =>
+    {
+        if (!changed) return navigation.pop()
 
+        setLoading(true)
+
+        let formats = [];
+
+        if (dvdChecked) formats.push('DVD');
+        if (bluChecked) formats.push('Blu-ray');
+        if (uhdChecked) formats.push('4K')
+
+        try
+        {
+            await addToLibrary(movie, userRating, formats);
+        } catch (error)
+        {
+            console.log(error)
+        }
+
+        setLoading(false);
+        authContext.setShouldRefreshContent(true);
+
+        Toast.show((mode === 'edit' ? 'Updated ' : 'Added ') + movie.Title, {
+            duration: Toast.durations.LONG,
+        });
+
+        navigation.pop()
+    }
+
+    const confirmDeletion = async () =>
+    {
+        Alert.alert(
+            'Confirm',
+            `Are you sure you want to delete ${movie.Title} from your library?`,
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () =>
+                    {
+                        try
+                        {
+                            setLoading(true);
+                            await deleteFromLibrary(movie.Type, movie.imdbID)
+                            authContext.setShouldRefreshContent(true);
+                            Toast.show('Deleted ' + movie.Title, {
+                                duration: Toast.durations.LONG,
+                            });
+                            navigation.pop();
+                        } catch (error)
+                        {
+                            setLoading(false);
+                            setError(error);
+                        }
+                    }
+                },
+            ],
+            {
+                cancelable: true
+            });
+    }
 
     return (
         <Screen>
+            {error && <Text>{error}</Text>}
 
             {/* LOADING VIEW */}
             {loading &&
@@ -90,36 +176,48 @@ export default function EditItemScreen({ navigation, route })
                         isTouchable={true}
                         containerStyle={styles.starContainer}
                         starStyle={styles.stars}
-                        onPress={(score) => setUserRating(score)} />
+                        onPress={(score) => { setChanged(true); setUserRating(score) }} />
 
                     <Text style={styles.sectionHeader}>Owned Formats</Text>
 
                     <View style={styles.ownedFormatsContainer}>
-                        <View style={styles.ownedFormat}>
-                            <Text style={styles.ownedFormatTitle}>DVD</Text>
-                            <Checkbox color={colours.secondary} style={styles.ownedFormatCheckbox} value={dvdChecked} onValueChange={setDvdChecked} />
-                        </View>
-                        <View style={styles.ownedFormat}>
-                            <Text style={styles.ownedFormatTitle}>Blu-ray</Text>
-                            <Checkbox color={colours.secondary} style={styles.ownedFormatCheckbox} value={bluChecked} onValueChange={setBluChecked} />
-                        </View>
-                        <View style={styles.ownedFormat}>
-                            <Text style={styles.ownedFormatTitle}>4K</Text>
-                            <Checkbox color={colours.secondary} style={styles.ownedFormatCheckbox} value={uhdChecked} onValueChange={setUhdChecked} />
-                        </View>
+                        <Mk_FormatCheckbox
+                            formatName={'DVD'}
+                            checked={dvdChecked}
+                            onValueChange={(val) =>
+                            {
+                                setChanged(true);
+                                setDvdChecked(val);
+                            }} />
+
+                        <Mk_FormatCheckbox
+                            formatName={'Blu-ray'}
+                            checked={bluChecked}
+                            onValueChange={(val) =>
+                            {
+                                setChanged(true);
+                                setBluChecked(val);
+                            }} />
+
+                        <Mk_FormatCheckbox
+                            formatName={'4K'}
+                            checked={uhdChecked}
+                            onValueChange={(val) =>
+                            {
+                                setChanged(true);
+                                setUhdChecked(val);
+                            }} />
                     </View>
-
-
 
                     <Mk_RoundButton
                         style={styles.cancelButton}
-                        icon={'close'}
-                        onPress={() => navigation.pop()} />
+                        icon={mode === 'edit' ? 'delete-forever' : 'close'}
+                        onPress={() => mode === 'edit' ? confirmDeletion() : navigation.pop()} />
 
                     <Mk_RoundButton
                         style={styles.saveButton}
-                        icon={'check-bold'}
-                        onPress={() => navigation.pop()} />
+                        icon={mode === 'edit' ? 'content-save' : 'plus-thick'}
+                        onPress={() => saveToDb()} />
                 </View>
             }
         </Screen>
@@ -181,22 +279,6 @@ const styles = StyleSheet.create({
         width: '100%',
         flexDirection: 'row',
         justifyContent: 'center'
-    },
-    ownedFormat: {
-        width: '25%',
-        borderColor: colours.primary,
-        borderWidth: 2,
-        marginHorizontal: 4,
-    },
-    ownedFormatTitle: {
-        textAlign: 'center',
-        backgroundColor: colours.primary,
-        color: colours.white,
-        paddingBottom: 3
-    },
-    ownedFormatCheckbox: {
-        alignSelf: 'center',
-        marginVertical: 4
     },
     sectionHeader: {
         width: '100%',

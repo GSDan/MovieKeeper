@@ -20,7 +20,6 @@ export default function Mk_Stars({ value, isTouchable, onPress, containerStyle, 
                     {
                         if (isTouchable)
                         {
-                            console.log(i)
                             onPress(i);
                         }
                     }}>

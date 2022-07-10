@@ -1,14 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { RootSiblingParent } from 'react-native-root-siblings';
 
 import navigationTheme from './app/navigation/navigationTheme';
 import LibraryScreen from './app/screens/LibraryScreen'
 import AddItemScreen from './app/screens/AddItemScreen'
 import EditItemScreen from './app/screens/EditItemScreen'
 import ProfileScreen from './app/screens/ProfileScreen'
+import LoginScreen from './app/screens/LoginScreen';
+import { useAuthChange, AuthContext } from './app/hooks/userAuthentication';
+import Mk_Logo from './app/components/Mk_Logo';
+import Mk_Screen from './app/components/Mk_Screen';
 
 const AddStack = createNativeStackNavigator();
 const AddStackNavigator = () => (
@@ -26,6 +32,24 @@ const AddStackNavigator = () => (
   </AddStack.Navigator>
 );
 
+const ViewStack = createNativeStackNavigator();
+const ViewStackNavigator = () => (
+  <ViewStack.Navigator>
+    <ViewStack.Screen
+      name="Library"
+      component={LibraryScreen} />
+    <ViewStack.Screen
+      name="Edit"
+      component={EditItemScreen}
+      options={{
+        headerShown: false,
+        presentation: 'modal',
+        animation: 'slide_from_bottom',
+      }}
+    />
+  </ViewStack.Navigator>
+);
+
 const Tabs = createBottomTabNavigator();
 const TabNavigator = () => (
   <Tabs.Navigator screenOptions={() => ({
@@ -34,9 +58,10 @@ const TabNavigator = () => (
     }
   })}>
     <Tabs.Screen
-      name="Library"
-      component={LibraryScreen}
+      name="List"
+      component={ViewStackNavigator}
       options={{
+        headerShown: false,
         tabBarIcon: ({ color, size }) =>
           <MaterialCommunityIcons name='filmstrip-box-multiple' color={color} size={size} />
       }} />
@@ -61,9 +86,46 @@ const TabNavigator = () => (
 
 export default function App()
 {
+  const [initializing, setInitializing] = useState(true);
+  const [handleAuthChange, { currentUser }] = useAuthChange();
+  const [shouldRefreshContent, setShouldRefreshContent] = useState(true);
+
+  useEffect(() =>
+  {
+    handleAuthChange((user) =>
+    {
+      setInitializing(false)
+    })
+  }, []);
+
+  if (initializing) return (
+    <Mk_Screen style={styles.splash}>
+      <Mk_Logo />
+    </Mk_Screen>
+  )
+
+  if (currentUser == null)
+  {
+    return <LoginScreen />;
+  }
+
   return (
-    <NavigationContainer theme={navigationTheme}>
-      <TabNavigator />
-    </NavigationContainer>
+    <AuthContext.Provider value={{
+      currentUser,
+      shouldRefreshContent,
+      setShouldRefreshContent
+    }}>
+      <RootSiblingParent>
+        <NavigationContainer theme={navigationTheme}>
+          <TabNavigator />
+        </NavigationContainer>
+      </RootSiblingParent>
+    </AuthContext.Provider>
   )
 }
+
+const styles = StyleSheet.create({
+  splash: {
+    justifyContent: 'center',
+  }
+});

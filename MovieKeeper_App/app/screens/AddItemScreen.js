@@ -1,15 +1,15 @@
-import { StyleSheet, Text, View, ActivityIndicator, TextInput } from 'react-native'
+import { StyleSheet, Text, View, ActivityIndicator, TextInput, Alert } from 'react-native'
 import React, { useState, useEffect } from 'react'
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import { Picker } from '@react-native-picker/picker';
 
 import Screen from "../components/Mk_Screen";
 import colours from '../config/colours';
-import libraryItemsApi from '../api/libraryItems';
+import { getFromBarcode, getFromTitle } from '../api/libraryItems';
 import Mk_Button from '../components/Mk_Button';
 import Mk_RoundButton from '../components/Mk_RoundButton';
-
+import Mk_Logo from '../components/Mk_Logo';
+import { getString, setString } from '../config/storage';
 
 export default function AddItemScreen({ navigation })
 {
@@ -41,23 +41,54 @@ export default function AddItemScreen({ navigation })
 
     const [hasPermission, setHasPermission] = useState(null);
     const [scannerVisible, setScannerVisible] = useState(false);
+    const [showRegionExplainer, setShowRegionExplainer] = useState(true);
     const [selectedRegion, setSelectedRegion] = useState();
     const [titleInput, setTitleInput] = useState();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
 
-    const openScanner = async () =>
+    useEffect(() =>
+    {
+        (async () =>
+        {
+            const storedRegion = await getString('ebayRegion');
+            if (storedRegion) 
+            {
+                setSelectedRegion(storedRegion);
+                setShowRegionExplainer(false);
+            }
+        })();
+    }, []);
+
+    const openScanner = () =>
+    {
+        setScannerVisible(true);
+        if (showRegionExplainer)
+        {
+            setShowRegionExplainer(false);
+            Alert.alert(
+                'Please set your region',
+                'For the best results, please select the region in which you bought the disc before scanning it.',
+                [
+                    {
+                        text: 'Got it'
+                    }
+                ]);
+        }
+    }
+
+    const checkPermsOpenScanner = async () =>
     {
         if (!hasPermission)
         {
             const { status } = await BarCodeScanner.requestPermissionsAsync();
             const allowed = status === 'granted';
             setHasPermission(allowed);
-            if (allowed) setScannerVisible(true);
+            if (allowed) openScanner();
         }
         else
         {
-            setScannerVisible(true);
+            openScanner();
         }
     };
 
@@ -76,31 +107,35 @@ export default function AddItemScreen({ navigation })
 
     const searchOmdb = async (title) =>
     {
-        if (!title) return setError(true);
+        if (!title) return setError('Please enter a movie title');
 
         setLoading(true);
-        const resp = await libraryItemsApi.getFromTitle(title);
+        const resp = await getFromTitle(title);
 
-        if (!resp.ok || !resp.data.success)
+        if (!resp || !resp.data || !resp.data.success)
         {
             setLoading(false);
-            return setError(true)
+            return setError(resp && resp.data ? "Couldn't find a movie with that title" : "Something went wrong")
         }
 
-        setError(false);
-        formatMovieData(resp.data.data)
+        setError(null);
+        formatMovieData(resp.data.data, null);
         setLoading(false);
     }
 
-    const handleBarCodeScanned = async ({ type, data }) =>
+    const handleBarCodeScanned = async ({ data }) =>
     {
         setScannerVisible(false);
 
         setLoading(true);
-        const resp = await libraryItemsApi.getFromBarcode(data, selectedRegion);
+        const resp = await getFromBarcode(data, selectedRegion);
         setLoading(false);
 
-        if (!resp.ok || !resp.data.success) return setError(true)
+        if (!resp || !resp.data.success)
+        {
+            console.log(resp)
+            return setError(true)
+        }
 
         setError(false);
         formatMovieData(resp.data.data, resp.data.likelyFormat)
@@ -129,8 +164,10 @@ export default function AddItemScreen({ navigation })
                             style={{ flex: 6 }}
                             selectedValue={selectedRegion}
                             onValueChange={(itemValue, itemIndex) =>
-                                setSelectedRegion(itemValue)
-                            }>
+                            {
+                                setSelectedRegion(itemValue);
+                                setString('ebayRegion', itemValue);
+                            }}>
                             {
                                 marketplaces.map((mpObj) =>
                                     <Picker.Item
@@ -154,16 +191,7 @@ export default function AddItemScreen({ navigation })
             {!scannerVisible && !loading &&
                 <View style={styles.typeOrScanContainer}>
 
-                    <View style={styles.circleContainer}>
-                        <View style={styles.circleOuter}>
-                            <View style={styles.circleInner}>
-                                <MaterialCommunityIcons
-                                    style={{ color: colours.primary }}
-                                    name={'movie-search'}
-                                    size={100} />
-                            </View>
-                        </View>
-                    </View>
+                    <Mk_Logo style={styles.logo} />
 
                     <View style={styles.searchContainer}>
                         <TextInput
@@ -184,7 +212,7 @@ export default function AddItemScreen({ navigation })
                     <Mk_Button
                         text={'Scan Barcode'}
                         icon={'barcode-scan'}
-                        onPress={() => openScanner()} />
+                        onPress={() => checkPermsOpenScanner()} />
 
                     {hasPermission === false &&
                         <Text style={styles.permissionsWarning}>
@@ -200,31 +228,13 @@ export default function AddItemScreen({ navigation })
 }
 
 const styles = StyleSheet.create({
-    circleContainer: {
-        width: '100%',
-        alignItems: 'center',
-        marginBottom: 40
-    },
-    circleInner: {
-        width: 150,
-        height: 150,
-        backgroundColor: colours.white,
-        borderRadius: 150,
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    circleOuter: {
-        width: 170,
-        height: 170,
-        backgroundColor: colours.secondary,
-        borderRadius: 170,
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
     loadingIndicator: {
         height: '100%',
         alignSelf: 'center',
         color: colours.primary
+    },
+    logo: {
+        marginBottom: 25
     },
     permissionsWarning: {
         width: '100%',
