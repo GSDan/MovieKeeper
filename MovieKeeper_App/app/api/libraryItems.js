@@ -15,10 +15,10 @@ export const getFromTitle = async (title) =>
     return await getMovieFromTitle({ title });
 };
 
-export const getMovieLibrary = async () =>
+export const getLibrary = async () =>
 {
-    const getMovieLibrary = httpsCallable(functions, 'getMovieLibrary');
-    return await getMovieLibrary();
+    const getLibrary = httpsCallable(functions, 'getLibrary');
+    return await getLibrary();
 };
 
 export const addToLibrary = async (movieData, userRating, ownedFormats) =>

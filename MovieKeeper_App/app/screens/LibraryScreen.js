@@ -1,4 +1,4 @@
-import { StyleSheet, FlatList, Text, RefreshControl, View, TouchableOpacity, Modal, Button } from 'react-native'
+import { StyleSheet, FlatList, Text, RefreshControl, View, TouchableOpacity, Modal, useWindowDimensions } from 'react-native'
 import React, { useState, useContext, useLayoutEffect, useEffect } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
@@ -7,10 +7,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from "../components/Mk_Screen";
 import Card from "../components/Mk_Card";
 import colours from "../config/colours";
-import { getMovieLibrary } from '../api/libraryItems';
+import { getLibrary } from '../api/libraryItems';
 import { AuthContext } from '../hooks/userAuthentication';
 import Mk_Button from '../components/Mk_Button';
-import { setString, getString } from '../config/storage';
+import Mk_RoundButton from '../components/Mk_RoundButton';
+import { setString, getString, getData, setData } from '../config/storage';
 
 const sortFields = [
     {
@@ -47,9 +48,11 @@ export default function LibraryScreen({ navigation })
 {
     const [refreshing, setRefreshing] = useState(false);
     const [libraryData, setLibraryData] = useState([]);
+    const [firstScan, setFirstScan] = useState(true)
     const [sortedData, setSortedData] = useState([]);
+    const [mediaType, setMediaType] = useState('movie');
     const [sortBy, setSortBy] = useState('Title');
-    const [sortAsc, setSortAsc] = useState(true);
+    const [sortAsc, setSortAsc] = useState(false);
     const [filterField, setFilterField] = useState(null);
     const [filterValue, setFilterValue] = useState(null);
     const [filterOptions, setFilterOptions] = useState(null);
@@ -61,8 +64,21 @@ export default function LibraryScreen({ navigation })
     {
         async function loadConf()
         {
-            const previousSortBy = await getString('sortBy');
-            const previousSortAsc = await getString('sortAsc');
+            let storedLibrary;
+            let previousSortBy;
+            let previousSortAsc;
+            let anyPrevious;
+
+            await Promise.all([
+                getData('library').then(data => storedLibrary = data),
+                getString('first').then(data => anyPrevious = data),
+                getString('sortBy').then(data => previousSortBy = data),
+                getString('sortAsc').then(data => previousSortAsc = data)
+            ])
+
+            if (storedLibrary) setLibraryData(storedLibrary);
+
+            if (anyPrevious) setFirstScan(false);
 
             if (previousSortBy)
             {
@@ -122,19 +138,19 @@ export default function LibraryScreen({ navigation })
         setString('sortBy', sortBy);
         setString('sortAsc', JSON.stringify(sortAsc));
 
-        const filtered = !filterField || filterField === 'None' ?
-            libraryData :
-            libraryData.filter(movie =>
-            {
+        const filtered = libraryData.filter(item =>
+        {
+            if (item['Type'] !== mediaType) return false;
+            if (!filterField || filterField === 'None') return true;
 
-                if (filterField === 'Rated')
-                {
-                    // If using '.includes()', age ratings match each other 
-                    // (e.g. PG-13 includes PG which includes G)
-                    return movie[filterField] === filterValue;
-                }
-                return movie[filterField].includes(filterValue);
-            })
+            if (filterField === 'Rated')
+            {
+                // If using '.includes()', age ratings match each other 
+                // (e.g. PG-13 includes PG which includes G)
+                return item[filterField] === filterValue;
+            }
+            return item[filterField].includes(filterValue);
+        })
 
         const sortByPos = sortFields.map(function (x) { return x.Field; }).indexOf(sortBy);
         navigation.setOptions({
@@ -164,14 +180,14 @@ export default function LibraryScreen({ navigation })
                     return parseInt(first[sortBy]) - parseInt(second[sortBy]);
                 default:
                     // titles without articles (a, the, an)
-                    return removeArticles(first['Title'].toLowerCase())
-                        .localeCompare(removeArticles(second['Title'].toLowerCase()));
+                    return removeArticles(second['Title'].toLowerCase())
+                        .localeCompare(removeArticles(first['Title'].toLowerCase()));
             }
         });
 
         setSortedData(sorted);
         setRerenderList(!rerenderList);
-    }, [sortBy, sortAsc, filterField, filterValue, libraryData])
+    }, [sortBy, sortAsc, mediaType, filterField, filterValue, libraryData])
 
     useFocusEffect(
         () => { if (authContext.shouldRefreshContent) fetchLibraryData(); }
@@ -196,8 +212,14 @@ export default function LibraryScreen({ navigation })
             if (refreshing) return;
 
             setRefreshing(true);
-            const result = await getMovieLibrary();
-            setLibraryData(result.data);
+            const result = await getLibrary();
+
+            if (result.data)
+            {
+                setLibraryData(result.data);
+                setData('library', result.data);
+            }
+
             authContext.setShouldRefreshContent(false);
             setRefreshing(false);
         }
@@ -213,20 +235,62 @@ export default function LibraryScreen({ navigation })
         navigation.navigate("Edit", { 'movie': movieData, 'mode': 'edit', 'formats': movieData.Formats })
     }
 
+    const numCols = Math.max(Math.floor(useWindowDimensions().width / 400), 1);
+
     return (
         <Screen style={styles.screen}>
             <FlatList
                 style={styles.list}
                 data={sortedData}
                 extraData={rerenderList}
-                keyExtractor={(listing) => listing.imdbID}
+                numColumns={numCols}
+                // need to also change key when changing numColumns
+                key={numCols}
+                keyExtractor={(listing) => listing.imdbID + numCols}
                 renderItem={({ item }) => (
                     <Card
+                        style={{ flex: 1 / numCols }}
                         movie={item}
                         onPress={() => openForEditing(item)} />
                 )}
-                ListHeaderComponent={<View />}
-                ListHeaderComponentStyle={{ height: 20 }}
+                contentContainerStyle={{ flexGrow: 1 }}
+                ListEmptyComponent={<View style={styles.listEmptyContainer}>
+                    <Text>Nothing to see here.</Text>
+                    <Text>...yet.</Text>
+
+                    {firstScan &&
+                        <Text style={{ marginTop: 40 }}>
+                            Tap 'Add' below to get started!
+                        </Text>
+                    }
+                </View>}
+                ListHeaderComponent={<View style={{ flexDirection: "row", marginVertical: 15, width: '70%', alignItems: 'center', alignSelf: 'center' }}>
+
+                    <View style={{ flex: 1, marginRight: 5 }}>
+                        <Mk_RoundButton
+                            icon={'movie-open'}
+                            style={{
+                                alignSelf: 'center',
+                                width: 130,
+                                backgroundColor: mediaType === 'movie' ? colours.secondary : colours.secondary_light
+                            }}
+                            iconStyle={{ color: mediaType === 'movie' ? colours.white : colours.light }}
+                            onPress={() => setMediaType('movie')} />
+                    </View>
+
+                    <View style={{ flex: 1, marginLeft: 5 }}>
+                        <Mk_RoundButton
+                            icon={'television-classic'}
+                            style={{
+                                alignSelf: 'center',
+                                width: 130,
+                                backgroundColor: mediaType === 'series' ? colours.secondary : colours.secondary_light
+                            }}
+                            iconStyle={{ color: mediaType === 'series' ? colours.white : colours.light }}
+                            onPress={() => setMediaType('series')} />
+                    </View>
+                </View>}
+
                 ListFooterComponentStyle={styles.listFooter}
                 ListFooterComponent={<Text style={styles.legal} numberOfLines={2}>
                     The Fresh Tomato® and Rotten Splat® logos are registered trademarks of Fandango Media LLC.
@@ -269,6 +333,8 @@ export default function LibraryScreen({ navigation })
                                 onValueChange={(itemValue, itemIndex) =>
                                 {
                                     setFilterField(itemValue);
+                                    setFilterValue(itemValue === 'None' || filterOptions[itemValue].length === 0 ?
+                                        null : filterOptions[itemValue][0])
                                 }}>
                                 {
                                     Object.keys(filterOptions).map((key) =>
@@ -316,6 +382,12 @@ export default function LibraryScreen({ navigation })
 }
 
 const styles = StyleSheet.create({
+    listEmptyContainer: {
+        height: '80%',
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
     filtersModal: {
         width: '100%',
         height: '100%',
@@ -345,7 +417,7 @@ const styles = StyleSheet.create({
         backgroundColor: colours.light,
     },
     listFooter: {
-        marginBottom: 7
+        marginBottom: 7,
     },
     legal: {
         textAlign: 'center',

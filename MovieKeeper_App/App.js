@@ -36,7 +36,7 @@ const ViewStack = createNativeStackNavigator();
 const ViewStackNavigator = () => (
   <ViewStack.Navigator>
     <ViewStack.Screen
-      name="Library"
+      name="List"
       component={LibraryScreen} />
     <ViewStack.Screen
       name="Edit"
@@ -58,7 +58,7 @@ const TabNavigator = () => (
     }
   })}>
     <Tabs.Screen
-      name="List"
+      name="Library"
       component={ViewStackNavigator}
       options={{
         headerShown: false,

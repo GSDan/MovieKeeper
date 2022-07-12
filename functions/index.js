@@ -223,24 +223,45 @@ exports.getMovieFromTitle = functions.https.onCall(async (data, context) =>
   return { "success": false };
 });
 
-exports.getMovieLibrary = functions.https.onCall(async (data, context) =>
+exports.getLibrary = functions.https.onCall(async (data, context) =>
 {
   if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
 
-  const userCol = await db.collection(`Users/${context.auth.uid}/Movies`).get();
+  const userMovieCol = await db.collection(`Users/${context.auth.uid}/Movies`).get();
+  const userTVCol = await db.collection(`Users/${context.auth.uid}/TV`).get();
 
-  const movieDocs = await Promise.all(
-    userCol.docs.map(async (doc) =>
-    {
-      const movDoc = await db.doc(`Movies/${doc.id}`).get();
-      return {
-        ...movDoc.data(),
-        ...doc.data()
-      };
-    })
-  );
+  let promises = [];
+  let toRet = [];
 
-  return movieDocs;
+  userMovieCol.docs.map((userMovDoc) =>
+  {
+    promises.push(
+      db.doc(`Movies/${userMovDoc.id}`).get().then((movDoc) => 
+      {
+        toRet.push({
+          ...movDoc.data(),
+          ...userMovDoc.data()
+        });
+      })
+    );
+  })
+
+  userTVCol.docs.map(async (userTvDoc) =>
+  {
+    promises.push(
+      db.doc(`TV/${userTvDoc.id}`).get().then((tvDoc) => 
+      {
+        toRet.push({
+          ...tvDoc.data(),
+          ...userTvDoc.data()
+        });
+      })
+    );
+  })
+
+  await Promise.all(promises);
+
+  return toRet;
 });
 
 exports.deleteFromLibrary = functions.https.onCall(async (data, context) =>

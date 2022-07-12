@@ -6,10 +6,10 @@ import Stars from "../components/Mk_Stars";
 import Mk_RottenScore from './Mk_RottenScore';
 import Mk_ImdbScore from './Mk_ImdbScore';
 
-export default function Mk_Card({ movie, onPress })
+export default function Mk_Card({ movie, onPress, style })
 {
     return (
-        <TouchableOpacity onPress={onPress}>
+        <TouchableOpacity onPress={onPress} style={style}>
             <View style={styles.card}>
                 <Image style={styles.image} source={{ uri: movie.Poster }} />
                 <View style={styles.detailsContainer}>
@@ -24,8 +24,8 @@ export default function Mk_Card({ movie, onPress })
                         isTouchable={false}
                         containerStyle={{ marginTop: 8 }} />
                     <View style={styles.ratingsContainer}>
-                        <Mk_RottenScore score={movie.ScoreRotten} />
-                        <Mk_ImdbScore score={movie.imdbRating} style={{ marginLeft: 8 }} />
+                        {movie.ScoreRotten && <Mk_RottenScore score={movie.ScoreRotten} />}
+                        <Mk_ImdbScore score={movie.imdbRating} style={{ marginLeft: movie.ScoreRotten ? 8 : 0 }} />
                     </View>
 
                 </View>

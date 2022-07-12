@@ -160,7 +160,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginVertical: 3,
         marginHorizontal: 10,
-        height: 40
+        height: 40,
+        maxWidth: 500,
+        alignSelf: 'center'
     },
     fieldSpacer: {
         flex: 2,
