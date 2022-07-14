@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native'
+import { Image, StyleSheet } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -13,7 +13,6 @@ import EditItemScreen from './app/screens/EditItemScreen'
 import ProfileScreen from './app/screens/ProfileScreen'
 import LoginScreen from './app/screens/LoginScreen';
 import { useAuthChange, AuthContext } from './app/hooks/userAuthentication';
-import Mk_Logo from './app/components/Mk_Logo';
 import Mk_Screen from './app/components/Mk_Screen';
 
 const AddStack = createNativeStackNavigator();
@@ -100,7 +99,7 @@ export default function App()
 
   if (initializing) return (
     <Mk_Screen style={styles.splash}>
-      <Mk_Logo />
+      <Image style={styles.logo} source={require("./app/assets/adaptive-icon.png")} />
     </Mk_Screen>
   )
 
@@ -126,6 +125,13 @@ export default function App()
 
 const styles = StyleSheet.create({
   splash: {
+    alignContent: 'center',
     justifyContent: 'center',
+  },
+  logo: {
+    height: '22%',
+    width: '100%',
+    marginBottom: 20,
+    resizeMode: 'contain'
   }
 });

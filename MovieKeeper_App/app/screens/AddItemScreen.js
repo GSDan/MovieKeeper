@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ActivityIndicator, TextInput, Alert } from 'react-native'
+import { StyleSheet, Text, View, ActivityIndicator, TextInput, Alert, Image } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import { Picker } from '@react-native-picker/picker';
@@ -8,7 +8,6 @@ import colours from '../config/colours';
 import { getFromBarcode, getFromTitle } from '../api/libraryItems';
 import Mk_Button from '../components/Mk_Button';
 import Mk_RoundButton from '../components/Mk_RoundButton';
-import Mk_Logo from '../components/Mk_Logo';
 import { getString, setString } from '../config/storage';
 
 export default function AddItemScreen({ navigation })
@@ -92,17 +91,26 @@ export default function AddItemScreen({ navigation })
         }
     };
 
-    const formatMovieData = (data, likelyFormat = null) =>
+    const formatMovieData = (mediaResults, likelyFormat = null, barcode = null) =>
     {
-        const rotten = data.Ratings.find(r => r.Source === 'Rotten Tomatoes');
-
-        if (rotten)
+        mediaResults.forEach(mediaRes =>
         {
-            data.ScoreRotten = rotten.Value;
-        }
+            if (mediaRes.Ratings)
+            {
+                const rotten = mediaRes.Ratings.find(r => r.Source === 'Rotten Tomatoes');
+                if (rotten) mediaRes.ScoreRotten = rotten.Value;
+            }
+        });
 
-        // TODO check if we have this movie already in the library
-        navigation.navigate("Edit", { 'movie': data, 'mode': 'add', 'likelyFormat': likelyFormat })
+        // TODO check if we have this media already in the library
+        navigation.navigate("Edit",
+            {
+                'media': mediaResults,
+                'mode': 'add',
+                'likelyFormat': likelyFormat,
+                'barcode': barcode
+            }
+        )
     }
 
     const searchOmdb = async (title) =>
@@ -119,16 +127,16 @@ export default function AddItemScreen({ navigation })
         }
 
         setError(null);
-        formatMovieData(resp.data.data, null);
+        formatMovieData([resp.data.data], null);
         setLoading(false);
     }
 
-    const handleBarCodeScanned = async ({ data }) =>
+    const handleBarCodeScanned = async ({ data: barcode }) =>
     {
         setScannerVisible(false);
 
         setLoading(true);
-        const resp = await getFromBarcode(data, selectedRegion);
+        const resp = await getFromBarcode(barcode, selectedRegion);
         setLoading(false);
 
         if (!resp || !resp.data.success)
@@ -138,7 +146,7 @@ export default function AddItemScreen({ navigation })
         }
 
         setError(false);
-        formatMovieData(resp.data.data, resp.data.likelyFormat)
+        formatMovieData(resp.data.data, resp.data.likelyFormat, barcode)
     };
 
     return (
@@ -191,7 +199,7 @@ export default function AddItemScreen({ navigation })
             {!scannerVisible && !loading &&
                 <View style={styles.typeOrScanContainer}>
 
-                    <Mk_Logo style={styles.logo} />
+                    <Image style={styles.logo} source={require("../assets/adaptive-icon.png")} />
 
                     <View style={styles.searchContainer}>
                         <TextInput
@@ -234,7 +242,10 @@ const styles = StyleSheet.create({
         color: colours.primary
     },
     logo: {
-        marginBottom: 25
+        height: '22%',
+        width: '100%',
+        marginBottom: 20,
+        resizeMode: 'contain'
     },
     permissionsWarning: {
         width: '100%',

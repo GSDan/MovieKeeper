@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native'
+import { StyleSheet, Text, TextInput, View, ActivityIndicator, Image } from 'react-native'
 import React, { useState } from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Formik } from 'formik';
@@ -7,7 +7,6 @@ import * as Yup from 'yup'
 import Mk_Screen from '../components/Mk_Screen'
 import colours from '../config/colours';
 import Mk_Button from '../components/Mk_Button';
-import Mk_Logo from '../components/Mk_Logo';
 import { useLogin, useRegister } from '../hooks/userAuthentication';
 
 const validationSchema = (withConfirm) => Yup.object().shape({
@@ -48,7 +47,7 @@ export default function LoginScreen()
             }
 
             {!(registerLoading || loginLoading) && <>
-                <Mk_Logo />
+                <Image style={styles.logo} source={require("../assets/adaptive-icon.png")} />
 
                 <Text style={styles.title}>MovieKeeper</Text>
 
@@ -82,6 +81,7 @@ export default function LoginScreen()
                                     keyboardType='email-address'
                                     placeholder='Email address'
                                     autoCapitalize='none'
+                                    selectionColor={colours.primary}
                                     onBlur={() => setFieldTouched("email")}
                                     autoCorrect={false}
                                     onChangeText={handleChange('email')} />
@@ -105,6 +105,7 @@ export default function LoginScreen()
                                     autoCapitalize='none'
                                     autoCorrect={false}
                                     secureTextEntry={true}
+                                    selectionColor={colours.primary}
                                     onBlur={() => setFieldTouched("password")}
                                     onChangeText={handleChange('password')} />
                                 <View style={styles.fieldSpacer} />
@@ -124,6 +125,7 @@ export default function LoginScreen()
                                             autoCapitalize='none'
                                             autoCorrect={false}
                                             secureTextEntry={true}
+                                            selectionColor={colours.primary}
                                             onChangeText={handleChange('confirmPassword')} />
                                         <View style={styles.fieldSpacer} />
                                     </View>
@@ -191,13 +193,18 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         padding: 8,
         paddingLeft: 12,
-        borderRadius: 10,
+        borderRadius: 10
     },
     title: {
         width: '100%',
         textAlign: 'center',
         fontSize: 35,
         marginVertical: 15,
-        color: colours.medium
+        color: colours.primary
+    },
+    logo: {
+        height: '25%',
+        width: '100%',
+        resizeMode: 'contain'
     }
 })

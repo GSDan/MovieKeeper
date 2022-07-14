@@ -54,6 +54,34 @@ exports.getMovieFromBarcode = functions.https.onCall(async (data, context) =>
     if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
 
     const barcode = data.barcode;
+
+    // check if this barcode has already been scanned, return data if so
+    const priorScan = (await db.collection('Barcodes').doc(barcode).get()).data();
+    if (priorScan)
+    {
+      const ids = priorScan.imdbIDs;
+      let results = [];
+      let promises = [];
+
+      ids.forEach(id =>
+      {
+        promises.push(db.collection(priorScan.Type === 'movie' ? 'Movies' : 'TV').doc(id).get().then(val =>
+        {
+          results.push(val.data());
+        }));
+      });
+
+      await Promise.all(promises);
+
+      console.log('Found existing barcode: ' + barcode);
+
+      return {
+        'success': true,
+        'likelyFormat': priorScan.Format,
+        'data': results
+      }
+    }
+
     const tokenResp = await ebayAuthToken.getApplicationToken('PRODUCTION', ['https://api.ebay.com/oauth/api_scope']);
     const headers = {
       'Authorization': `Bearer ${CircularJSON.parse(tokenResp).access_token}`,
@@ -113,6 +141,7 @@ exports.getMovieFromBarcode = functions.https.onCall(async (data, context) =>
         if (commonResp.success)
         {
           commonResp.likelyFormat = likelyFormat;
+          commonResp.data = [commonResp.data];
           return commonResp;
         }
       }
@@ -130,6 +159,7 @@ exports.getMovieFromBarcode = functions.https.onCall(async (data, context) =>
       if (omdbResp.success)
       {
         omdbResp.likelyFormat = likelyFormat;
+        omdbResp.data = [omdbResp.data]
         return omdbResp;
       }
     }
@@ -306,6 +336,31 @@ exports.addMovieToLibrary = functions.https.onCall(async (data, context) =>
     else if (data.ScoreRotten) newData.ScoreRotten;
 
     await mediaRef.set(newData);
+  }
+
+  if (data.Barcode)
+  {
+    // check if this barcode has already been scanned
+    // if not, add to known barcodes
+    const barcodeRef = db.collection('Barcodes').doc(data.Barcode);
+    const barcodeVal = (await barcodeRef.get()).data();
+    if (!barcodeVal)
+    {
+      barcodeRef.set({
+        'Type': data.Type,
+        'imdbIDs': [data.imdbID],
+        'Format': data.OwnedFormats[0],
+        'CreatedBy': context.auth.uid,
+        'CreatedAt': Date.now()
+      })
+    }
+    // if so, check if this movie has been associated (e.g. boxset)
+    else if (!barcodeVal.imdbIDs.includes(data.imdbID))
+    {
+      barcodeRef.update({
+        imdbIDs: [...barcodeVal.imdbIDs, data.imdbID]
+      })
+    }
   }
 
   const libraryRef = db.collection('Users').doc(context.auth.uid).collection(mediaType).doc(data.imdbID);

@@ -23,8 +23,11 @@ export default function EditItemScreen({ navigation, route })
     const [error, setError] = useState(null);
     const authContext = useContext(AuthContext);
 
-    const movie = route.params.movie;
-    const mode = route.params.mode;
+    const media = route.params.media;
+    const barcode = route.params.barcode;
+    const movie = media[0] //TODO
+    const isBoxset = media.length > 1;
+    const addOrEdit = route.params.mode;
     const existingFormats = route.params.formats;
 
     const addFormat = (format) =>
@@ -47,7 +50,7 @@ export default function EditItemScreen({ navigation, route })
     {
         (async () =>
         {
-            if (mode === 'edit')
+            if (addOrEdit === 'edit')
             {
                 setUserRating(movie.UserRating)
 
@@ -79,10 +82,13 @@ export default function EditItemScreen({ navigation, route })
         if (bluChecked) formats.push('Blu-ray');
         if (uhdChecked) formats.push('4K')
 
+        if (barcode) movie.Barcode = barcode;
+
         try
         {
             await addToLibrary(movie, userRating, formats);
-        } catch (error)
+        }
+        catch (error)
         {
             console.log(error)
         }
@@ -90,7 +96,7 @@ export default function EditItemScreen({ navigation, route })
         setLoading(false);
         authContext.setShouldRefreshContent(true);
 
-        Toast.show((mode === 'edit' ? 'Updated ' : 'Added ') + movie.Title, {
+        Toast.show((addOrEdit === 'edit' ? 'Updated ' : 'Added ') + movie.Title, {
             duration: Toast.durations.LONG,
         });
 
@@ -211,12 +217,12 @@ export default function EditItemScreen({ navigation, route })
 
                     <Mk_RoundButton
                         style={styles.cancelButton}
-                        icon={mode === 'edit' ? 'delete-forever' : 'close'}
-                        onPress={() => mode === 'edit' ? confirmDeletion() : navigation.pop()} />
+                        icon={addOrEdit === 'edit' ? 'delete-forever' : 'close'}
+                        onPress={() => addOrEdit === 'edit' ? confirmDeletion() : navigation.pop()} />
 
                     <Mk_RoundButton
                         style={styles.saveButton}
-                        icon={mode === 'edit' ? 'content-save' : 'plus-thick'}
+                        icon={addOrEdit === 'edit' ? 'content-save' : 'plus-thick'}
                         onPress={() => saveToDb()} />
                 </View>
             }
