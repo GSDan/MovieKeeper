@@ -23,11 +23,11 @@ export default function EditItemScreen({ navigation, route })
     const [error, setError] = useState(null);
     const authContext = useContext(AuthContext);
 
+    const mode = route.params.mode;
     const media = route.params.media;
     const barcode = route.params.barcode;
-    const movie = media[0] //TODO
+    const movie = mode === 'fail' ? {} : media[0] //TODO
     const isBoxset = media.length > 1;
-    const addOrEdit = route.params.mode;
     const existingFormats = route.params.formats;
 
     const addFormat = (format) =>
@@ -50,7 +50,7 @@ export default function EditItemScreen({ navigation, route })
     {
         (async () =>
         {
-            if (addOrEdit === 'edit')
+            if (mode === 'edit')
             {
                 setUserRating(movie.UserRating)
 
@@ -96,7 +96,7 @@ export default function EditItemScreen({ navigation, route })
         setLoading(false);
         authContext.setShouldRefreshContent(true);
 
-        Toast.show((addOrEdit === 'edit' ? 'Updated ' : 'Added ') + movie.Title, {
+        Toast.show((mode === 'edit' ? 'Updated ' : 'Added ') + movie.Title, {
             duration: Toast.durations.LONG,
         });
 
@@ -217,12 +217,12 @@ export default function EditItemScreen({ navigation, route })
 
                     <Mk_RoundButton
                         style={styles.cancelButton}
-                        icon={addOrEdit === 'edit' ? 'delete-forever' : 'close'}
-                        onPress={() => addOrEdit === 'edit' ? confirmDeletion() : navigation.pop()} />
+                        icon={mode === 'edit' ? 'delete-forever' : 'close'}
+                        onPress={() => mode === 'edit' ? confirmDeletion() : navigation.pop()} />
 
                     <Mk_RoundButton
                         style={styles.saveButton}
-                        icon={addOrEdit === 'edit' ? 'content-save' : 'plus-thick'}
+                        icon={mode === 'edit' ? 'content-save' : 'plus-thick'}
                         onPress={() => saveToDb()} />
                 </View>
             }

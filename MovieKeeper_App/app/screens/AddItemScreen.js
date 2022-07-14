@@ -44,7 +44,7 @@ export default function AddItemScreen({ navigation })
     const [selectedRegion, setSelectedRegion] = useState();
     const [titleInput, setTitleInput] = useState();
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() =>
     {
@@ -135,18 +135,38 @@ export default function AddItemScreen({ navigation })
     {
         setScannerVisible(false);
 
-        setLoading(true);
-        const resp = await getFromBarcode(barcode, selectedRegion);
-        setLoading(false);
-
-        if (!resp || !resp.data.success)
+        try
         {
-            console.log(resp)
-            return setError(true)
+            setLoading(true);
+            const resp = await getFromBarcode(barcode, selectedRegion);
+            setLoading(false);
+
+            if (!resp)
+            {
+                // TODO
+                console.log(resp)
+                return setError("Oops! Something went wrong. Please check your connection and try again.")
+            }
+            else if (!resp.data.success)
+            {
+                navigation.navigate("Edit",
+                    {
+                        'media': [],
+                        'mode': 'fail',
+                        'barcode': barcode
+                    }
+                )
+            }
+
+            setError(null);
+            formatMovieData(resp.data.data, resp.data.likelyFormat, barcode)
+        }
+        catch (error)
+        {
+            setLoading(false);
+            setError("Oops! Something went wrong. Please check your connection and try again.");
         }
 
-        setError(false);
-        formatMovieData(resp.data.data, resp.data.likelyFormat, barcode)
     };
 
     return (
@@ -201,6 +221,8 @@ export default function AddItemScreen({ navigation })
 
                     <Image style={styles.logo} source={require("../assets/adaptive-icon.png")} />
 
+                    {error && <Text style={styles.error}>{error}</Text>}
+
                     <View style={styles.searchContainer}>
                         <TextInput
                             style={styles.searchInput}
@@ -246,6 +268,13 @@ const styles = StyleSheet.create({
         width: '100%',
         marginBottom: 20,
         resizeMode: 'contain'
+    },
+    error: {
+        width: '100%',
+        textAlign: 'center',
+        paddingHorizontal: 10,
+        marginBottom: 10,
+        color: 'red'
     },
     permissionsWarning: {
         width: '100%',
