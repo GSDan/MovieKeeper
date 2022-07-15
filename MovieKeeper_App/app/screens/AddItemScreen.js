@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ActivityIndicator, TextInput, Alert, Image } from 'react-native'
+import { StyleSheet, Text, View, ActivityIndicator, Alert, Image } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import { Picker } from '@react-native-picker/picker';
@@ -7,8 +7,8 @@ import Screen from "../components/Mk_Screen";
 import colours from '../config/colours';
 import { getFromBarcode, getFromTitle } from '../api/libraryItems';
 import Mk_Button from '../components/Mk_Button';
-import Mk_RoundButton from '../components/Mk_RoundButton';
 import { getString, setString } from '../config/storage';
+import Mk_TextSearch from '../components/Mk_TextSearch';
 
 export default function AddItemScreen({ navigation })
 {
@@ -223,17 +223,10 @@ export default function AddItemScreen({ navigation })
 
                     {error && <Text style={styles.error}>{error}</Text>}
 
-                    <View style={styles.searchContainer}>
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder='Search for a film title...'
-                            onChangeText={setTitleInput}></TextInput>
-
-                        <Mk_RoundButton
-                            icon={'magnify'}
-                            style={{ marginLeft: 10 }}
-                            onPress={() => searchOmdb(titleInput)} />
-                    </View>
+                    <Mk_TextSearch
+                        onChangeText={(text) => setTitleInput(text)}
+                        onPress={() => searchOmdb(titleInput)}
+                        placeholder={"Enter a movie or show's title..."} />
 
                     <Text style={{ color: colours.medium, width: '100%', textAlign: 'center', marginTop: 12, marginBottom: 12 }}>
                         or...
@@ -300,21 +293,6 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '75%',
         marginBottom: 5
-    },
-    searchContainer: {
-        flexDirection: "row",
-        justifyContent: 'center',
-        width: '100%',
-        height: 50,
-        alignItems: 'center'
-    },
-    searchInput: {
-        borderColor: colours.secondary,
-        borderWidth: 2,
-        padding: 8,
-        paddingLeft: 12,
-        borderRadius: 10,
-        width: '70%'
     },
     typeOrScanContainer: {
         height: '100%',

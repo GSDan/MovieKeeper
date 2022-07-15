@@ -1,16 +1,18 @@
-import { StyleSheet, Text, View, Image, ActivityIndicator, Alert } from 'react-native'
+import { StyleSheet, Text, View, Image, ActivityIndicator, Alert, Modal } from 'react-native'
 import React, { useState, useEffect, useContext } from 'react'
 import Toast from 'react-native-root-toast';
 
 import Screen from "../components/Mk_Screen";
 import colours from '../config/colours';
-import { addToLibrary, deleteFromLibrary } from '../api/libraryItems';
+import { addToLibrary, deleteFromLibrary, getFromTitle } from '../api/libraryItems';
 import Stars from "../components/Mk_Stars";
 import Mk_RoundButton from '../components/Mk_RoundButton';
 import Mk_RottenScore from '../components/Mk_RottenScore';
 import Mk_ImdbScore from '../components/Mk_ImdbScore';
 import Mk_FormatCheckbox from '../components/Mk_FormatCheckbox';
 import { AuthContext } from '../hooks/userAuthentication';
+import Mk_TextSearch from '../components/Mk_TextSearch';
+import Mk_Button from '../components/Mk_Button';
 
 export default function EditItemScreen({ navigation, route })
 {
@@ -18,15 +20,18 @@ export default function EditItemScreen({ navigation, route })
     const [bluChecked, setBluChecked] = useState(false);
     const [uhdChecked, setUhdChecked] = useState(false);
     const [userRating, setUserRating] = useState(null);
+    const [showSetTitleModal, setShowSetTitleModal] = useState(false);
+    const [searchText, setSearchText] = useState("");
+    const [searchError, setSearchError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [changed, setChanged] = useState(true);
+    const [movie, setMovie] = useState({})
     const [error, setError] = useState(null);
     const authContext = useContext(AuthContext);
 
     const mode = route.params.mode;
     const media = route.params.media;
     const barcode = route.params.barcode;
-    const movie = mode === 'fail' ? {} : media[0] //TODO
     const isBoxset = media.length > 1;
     const existingFormats = route.params.formats;
 
@@ -50,25 +55,61 @@ export default function EditItemScreen({ navigation, route })
     {
         (async () =>
         {
-            if (mode === 'edit')
+            if (mode === 'fail')
             {
-                setUserRating(movie.UserRating)
-
-                if (existingFormats)
-                {
-                    existingFormats.forEach(format =>
-                    {
-                        addFormat(format);
-                    });
-                }
-                setChanged(false);
+                setShowSetTitleModal(true);
             }
-            else if (route.params.likelyFormat)
+            else 
             {
-                addFormat(route.params.likelyFormat);
+                setMovie(media[0]);
+                if (mode === 'edit')
+                {
+                    setUserRating(movie.UserRating)
+
+                    if (existingFormats)
+                    {
+                        existingFormats.forEach(format =>
+                        {
+                            addFormat(format);
+                        });
+                    }
+                    setChanged(false);
+                }
+                else if (route.params.likelyFormat)
+                {
+                    addFormat(route.params.likelyFormat);
+                }
             }
         })();
     }, []);
+
+    const searchOmdb = async (title) =>
+    {
+        if (!title) return setError('Please enter a movie title');
+
+        setLoading(true);
+        const resp = await getFromTitle(title);
+
+        if (!resp || !resp.data || !resp.data.success)
+        {
+            setLoading(false);
+            return setSearchError(resp && resp.data ? "Couldn't find a movie with that title" : "Something went wrong")
+        }
+
+        setSearchError(null);
+        let data = resp.data.data;
+
+        if (data.Ratings)
+        {
+            const rotten = data.Ratings.find(r => r.Source === 'Rotten Tomatoes');
+            if (rotten) data.ScoreRotten = rotten.Value;
+        }
+
+        setMovie(data);
+
+        setLoading(false);
+        setShowSetTitleModal(false);
+    }
 
     const saveToDb = async () =>
     {
@@ -226,6 +267,39 @@ export default function EditItemScreen({ navigation, route })
                         onPress={() => saveToDb()} />
                 </View>
             }
+
+            <Modal
+                visible={showSetTitleModal}
+                animationType={'slide'}>
+
+                {loading &&
+                    <ActivityIndicator animating={loading} style={styles.loadingIndicator} size="large" />
+                }
+
+                {!loading &&
+                    <View style={styles.titleModal}>
+                        <Text style={styles.titleModalheader}>Hmm.</Text>
+                        <Text style={styles.titleModalText}>We couldn't find a movie or show with that barcode. Please enter the title to help others find it.</Text>
+
+                        {searchError &&
+                            <Text style={styles.error}>
+                                {searchError}
+                            </Text>
+                        }
+
+                        <Mk_TextSearch
+                            onChangeText={(text) => setSearchText(text)}
+                            onPress={() => searchOmdb(searchText)}
+                            placeholder={"Enter a movie or show's title..."} />
+                        <Mk_Button
+                            style={styles.titleModalClose}
+                            text={'Cancel'}
+                            onPress={() => navigation.pop()} />
+                    </View>
+                }
+
+            </Modal>
+
         </Screen>
     )
 }
@@ -239,6 +313,34 @@ const styles = StyleSheet.create({
         height: 50,
         backgroundColor: colours.primary,
         iconSize: 30
+    },
+    titleModal: {
+        width: '100%',
+        height: '100%',
+        padding: 20,
+        alignContent: 'center',
+        justifyContent: 'center'
+    },
+    titleModalheader: {
+        textAlign: 'center',
+        fontWeight: 'bold',
+        fontSize: 20,
+        marginVertical: 10
+    },
+    titleModalText: {
+        textAlign: 'center',
+        marginBottom: 15
+    },
+    titleModalClose: {
+        position: 'absolute',
+        bottom: 25
+    },
+    error: {
+        width: '100%',
+        textAlign: 'center',
+        paddingHorizontal: 10,
+        marginBottom: 10,
+        color: 'red'
     },
     saveButton: {
         position: 'absolute',
