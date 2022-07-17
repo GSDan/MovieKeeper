@@ -230,9 +230,9 @@ export default function LibraryScreen({ navigation })
         }
     }
 
-    const openForEditing = (movieData) =>
+    const openForEditing = (mediaItem) =>
     {
-        navigation.navigate("Edit", { 'movie': movieData, 'mode': 'edit', 'formats': movieData.Formats })
+        navigation.navigate("Edit", { 'media': mediaItem, 'mode': 'edit', 'formats': mediaItem.Formats })
     }
 
     const numCols = Math.max(Math.floor(useWindowDimensions().width / 400), 1);

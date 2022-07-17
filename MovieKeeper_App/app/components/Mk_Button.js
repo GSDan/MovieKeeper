@@ -4,10 +4,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import colours from '../config/colours';
 
-const Mk_Button = ({ text, icon, onPress, style }) =>
+const Mk_Button = ({ text, icon, onPress, style, disabled = false }) =>
 {
     return (
-        <TouchableOpacity style={[styles.button, style]} onPress={onPress}>
+        <TouchableOpacity
+            style={[styles.button, style]}
+            onPress={onPress}
+            disabled={disabled}>
             <Text style={styles.buttonText}>
                 {text}
             </Text>

@@ -303,6 +303,94 @@ exports.deleteFromLibrary = functions.https.onCall(async (data, context) =>
   return await db.collection(`Users/${context.auth.uid}/${mediaType}`).doc(data.id).delete();
 });
 
+exports.addBoxsetToLibrary = functions.https.onCall(async (data, context) =>
+{
+  if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
+
+  const barcodeRef = db.collection('Barcodes').doc(data.Barcode);
+  const barcodeVal = (await barcodeRef.get()).data();
+  const sentIds = data.MediaItems.map(item => item.imdbID);
+
+  // check if this barcode has already been scanned
+  // if not, add to known barcodes
+  if (!barcodeVal)
+  {
+    barcodeRef.set({
+      'Type': "movie",
+      'imdbIDs': sentIds,
+      'Format': data.OwnedFormats,
+      'CreatedBy': context.auth.uid,
+      'CreatedAt': Date.now()
+    })
+  }
+  // if so, check if all of these movies have been associated
+  else
+  {
+    let dbIds = barcodeVal.imdbIDs;
+    sentIds.forEach(id =>
+    {
+      if (!dbIds.includes(id))
+      {
+        dbIds.push(id)
+      }
+    });
+
+    if (dbIds.length > barcodeVal.imdbIDs.length)
+    {
+      barcodeRef.update({
+        imdbIDs: dbIds
+      })
+    }
+  }
+  let promises = [];
+
+  data.MediaItems.forEach(item =>
+  {
+    const mediaRef = db.collection("Movies").doc(item.imdbID);
+
+    promises.push(mediaRef.get().then(snapshot =>
+    {
+      if (!snapshot.exists)
+      {
+        console.log(`${item.imdbID} (${item.Title}) does not yet exist`)
+        let newData = {
+          'Actors': item.Actors,
+          'Director': item.Director,
+          'Genre': item.Genre,
+          'Poster': item.Poster,
+          'Rated': item.Rated,
+          'Runtime': item.Runtime,
+          'Title': item.Title,
+          'Type': item.Type,
+          'Year': item.Year,
+          'imdbID': item.imdbID,
+          'imdbRating': item.imdbRating
+        }
+
+        if (item.Ratings)
+        {
+          const rotten = item.Ratings.find(r => r.Source === 'Rotten Tomatoes');
+          if (rotten) newData.ScoreRotten = rotten.Value;
+        }
+        else if (data.ScoreRotten) newData.ScoreRotten;
+
+        return mediaRef.set(newData);
+      }
+    }).then(() =>
+    {
+      const libraryRef = db.collection('Users').doc(context.auth.uid).collection("Movies").doc(item.imdbID);
+      return libraryRef.set(
+        {
+          'UserRating': item.UserRating,
+          'Added': Date.now(),
+          'Formats': data.OwnedFormats
+        });
+    }));
+  });
+
+  return await Promise.all(promises);
+});
+
 exports.addMovieToLibrary = functions.https.onCall(async (data, context) =>
 {
   if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
@@ -349,7 +437,7 @@ exports.addMovieToLibrary = functions.https.onCall(async (data, context) =>
       barcodeRef.set({
         'Type': data.Type,
         'imdbIDs': [data.imdbID],
-        'Format': data.OwnedFormats[0],
+        'Format': data.OwnedFormats,
         'CreatedBy': context.auth.uid,
         'CreatedAt': Date.now()
       })

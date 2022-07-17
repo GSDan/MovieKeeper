@@ -21,7 +21,7 @@ export const getLibrary = async () =>
     return await getLibrary();
 };
 
-export const addToLibrary = async (movieData, userRating, ownedFormats) =>
+export const addSingleToLibrary = async (movieData, userRating, ownedFormats) =>
 {
     try
     {
@@ -36,6 +36,22 @@ export const addToLibrary = async (movieData, userRating, ownedFormats) =>
         console.log(error)
     }
 };
+
+export const addBoxetToLibrary = async (barcode, mediaItems, ownedFormats) =>
+{
+    try
+    {
+        const addBoxetToLibrary = httpsCallable(functions, 'addBoxsetToLibrary');
+        return await addBoxetToLibrary({
+            'Barcode': barcode,
+            'MediaItems': mediaItems,
+            'OwnedFormats': ownedFormats
+        });
+    } catch (error)
+    {
+        console.log(error)
+    }
+}
 
 export const deleteFromLibrary = async (Type, id) =>
 {

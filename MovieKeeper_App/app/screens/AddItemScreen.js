@@ -102,15 +102,19 @@ export default function AddItemScreen({ navigation })
             }
         });
 
-        // TODO check if we have this media already in the library
-        navigation.navigate("Edit",
-            {
-                'media': mediaResults,
-                'mode': 'add',
-                'likelyFormat': likelyFormat,
-                'barcode': barcode
-            }
-        )
+        if (mediaResults.length === 1)
+        {
+            // TODO check if we have this media already in the library
+            navigation.navigate("Edit",
+                {
+                    'media': mediaResults[0],
+                    'mode': 'add',
+                    'likelyFormat': likelyFormat,
+                    'barcode': barcode
+                }
+            )
+        }
+
     }
 
     const searchOmdb = async (title) =>
@@ -151,7 +155,7 @@ export default function AddItemScreen({ navigation })
             {
                 navigation.navigate("Edit",
                     {
-                        'media': [],
+                        'media': {},
                         'mode': 'fail',
                         'barcode': barcode
                     }
@@ -170,15 +174,10 @@ export default function AddItemScreen({ navigation })
     };
 
     return (
-        <Screen>
-
-            {/* LOADING VIEW */}
-            {loading &&
-                <ActivityIndicator animating={loading} style={styles.loadingIndicator} size="large" />
-            }
+        <Screen loading={loading}>
 
             {/* SCANNING VIEW */}
-            {scannerVisible && !loading &&
+            {scannerVisible &&
                 <View style={styles.scannerContainer}>
                     <BarCodeScanner
                         onBarCodeScanned={handleBarCodeScanned}
@@ -216,7 +215,7 @@ export default function AddItemScreen({ navigation })
             }
 
             {/* SEARCH OR START SCAN VIEW */}
-            {!scannerVisible && !loading &&
+            {!scannerVisible &&
                 <View style={styles.typeOrScanContainer}>
 
                     <Image style={styles.logo} source={require("../assets/adaptive-icon.png")} />
@@ -251,11 +250,6 @@ export default function AddItemScreen({ navigation })
 }
 
 const styles = StyleSheet.create({
-    loadingIndicator: {
-        height: '100%',
-        alignSelf: 'center',
-        color: colours.primary
-    },
     logo: {
         height: '22%',
         width: '100%',

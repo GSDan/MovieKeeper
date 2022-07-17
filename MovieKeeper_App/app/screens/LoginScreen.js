@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TextInput, View, ActivityIndicator, Image } from 'react-native'
+import { StyleSheet, Text, TextInput, View, Image } from 'react-native'
 import React, { useState } from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Formik } from 'formik';
@@ -37,117 +37,109 @@ export default function LoginScreen()
     };
 
     return (
-        <Mk_Screen style={styles.screen}>
+        <Mk_Screen style={styles.screen} loading={registerLoading || loginLoading}>
 
-            {(registerLoading || loginLoading) &&
-                <ActivityIndicator
-                    animating={registerLoading || loginLoading}
-                    style={styles.loadingIndicator}
-                    size="large" />
+
+            <Image style={styles.logo} source={require("../assets/adaptive-icon.png")} />
+
+            <Text style={styles.title}>MovieKeeper</Text>
+
+            {registerError &&
+                <Text style={styles.errorMessage}>{registerError}</Text>
             }
 
-            {!(registerLoading || loginLoading) && <>
-                <Image style={styles.logo} source={require("../assets/adaptive-icon.png")} />
+            {loginError &&
+                <Text style={styles.errorMessage}>{loginError}</Text>
+            }
 
-                <Text style={styles.title}>MovieKeeper</Text>
-
-                {registerError &&
-                    <Text style={styles.errorMessage}>{registerError}</Text>
-                }
-
-                {loginError &&
-                    <Text style={styles.errorMessage}>{loginError}</Text>
-                }
-
-                <Formik
-                    initialValues={{
-                        email: '',
-                        password: '',
-                        ...(showRegister && { confirmPassword: '' })
-                    }}
-                    onSubmit={values => signIn(values)}
-                    validationSchema={validationSchema(showRegister)}>
-                    {({ handleChange, handleSubmit, errors, setFieldTouched, touched }) => (
-                        <>
-                            <View style={styles.fieldContainer}>
-                                <View style={styles.fieldSpacer}>
-                                    <MaterialCommunityIcons
-                                        name={'email'}
-                                        color={colours.medium}
-                                        size={25} />
-                                </View>
-                                <TextInput
-                                    style={styles.textInput}
-                                    keyboardType='email-address'
-                                    placeholder='Email address'
-                                    autoCapitalize='none'
-                                    selectionColor={colours.primary}
-                                    onBlur={() => setFieldTouched("email")}
-                                    autoCorrect={false}
-                                    onChangeText={handleChange('email')} />
-                                <View style={styles.fieldSpacer} />
+            <Formik
+                initialValues={{
+                    email: '',
+                    password: '',
+                    ...(showRegister && { confirmPassword: '' })
+                }}
+                onSubmit={values => signIn(values)}
+                validationSchema={validationSchema(showRegister)}>
+                {({ handleChange, handleSubmit, errors, setFieldTouched, touched }) => (
+                    <>
+                        <View style={styles.fieldContainer}>
+                            <View style={styles.fieldSpacer}>
+                                <MaterialCommunityIcons
+                                    name={'email'}
+                                    color={colours.medium}
+                                    size={25} />
                             </View>
+                            <TextInput
+                                style={styles.textInput}
+                                keyboardType='email-address'
+                                placeholder='Email address'
+                                autoCapitalize='none'
+                                selectionColor={colours.primary}
+                                onBlur={() => setFieldTouched("email")}
+                                autoCorrect={false}
+                                onChangeText={handleChange('email')} />
+                            <View style={styles.fieldSpacer} />
+                        </View>
 
-                            {touched.email &&
-                                <Text style={styles.errorMessage}>{errors.email}</Text>
-                            }
+                        {touched.email &&
+                            <Text style={styles.errorMessage}>{errors.email}</Text>
+                        }
 
-                            <View style={styles.fieldContainer}>
-                                <View style={styles.fieldSpacer}>
-                                    <MaterialCommunityIcons
-                                        name={'key'}
-                                        color={colours.medium}
-                                        size={25} />
-                                </View>
-                                <TextInput
-                                    style={styles.textInput}
-                                    placeholder='Password'
-                                    autoCapitalize='none'
-                                    autoCorrect={false}
-                                    secureTextEntry={true}
-                                    selectionColor={colours.primary}
-                                    onBlur={() => setFieldTouched("password")}
-                                    onChangeText={handleChange('password')} />
-                                <View style={styles.fieldSpacer} />
+                        <View style={styles.fieldContainer}>
+                            <View style={styles.fieldSpacer}>
+                                <MaterialCommunityIcons
+                                    name={'key'}
+                                    color={colours.medium}
+                                    size={25} />
                             </View>
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder='Password'
+                                autoCapitalize='none'
+                                autoCorrect={false}
+                                secureTextEntry={true}
+                                selectionColor={colours.primary}
+                                onBlur={() => setFieldTouched("password")}
+                                onChangeText={handleChange('password')} />
+                            <View style={styles.fieldSpacer} />
+                        </View>
 
-                            {touched.password &&
-                                <Text style={styles.errorMessage}>{errors.password}</Text>
-                            }
+                        {touched.password &&
+                            <Text style={styles.errorMessage}>{errors.password}</Text>
+                        }
 
-                            {showRegister && (
-                                <>
-                                    <View style={styles.fieldContainer}>
-                                        <View style={styles.fieldSpacer} />
-                                        <TextInput
-                                            style={styles.textInput}
-                                            placeholder='Confirm Password'
-                                            autoCapitalize='none'
-                                            autoCorrect={false}
-                                            secureTextEntry={true}
-                                            selectionColor={colours.primary}
-                                            onChangeText={handleChange('confirmPassword')} />
-                                        <View style={styles.fieldSpacer} />
-                                    </View>
+                        {showRegister && (
+                            <>
+                                <View style={styles.fieldContainer}>
+                                    <View style={styles.fieldSpacer} />
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder='Confirm Password'
+                                        autoCapitalize='none'
+                                        autoCorrect={false}
+                                        secureTextEntry={true}
+                                        selectionColor={colours.primary}
+                                        onChangeText={handleChange('confirmPassword')} />
+                                    <View style={styles.fieldSpacer} />
+                                </View>
 
-                                    <Text style={styles.errorMessage}>{errors.confirmPassword}</Text>
-                                </>
-                            )}
+                                <Text style={styles.errorMessage}>{errors.confirmPassword}</Text>
+                            </>
+                        )}
 
-                            <Mk_Button
-                                text={showRegister ? 'Register' : 'Login'}
-                                style={styles.loginButton}
-                                onPress={handleSubmit} />
-                        </>
-                    )}
-                </Formik>
+                        <Mk_Button
+                            text={showRegister ? 'Register' : 'Login'}
+                            style={styles.loginButton}
+                            onPress={handleSubmit} />
+                    </>
+                )}
+            </Formik>
 
-                <Mk_Button
-                    text={showRegister ? 'Already got an account? Login' : 'Not got an account? Register'}
-                    style={styles.registerButton}
-                    onPress={() => setShowRegister(!showRegister)} />
+            <Mk_Button
+                text={showRegister ? 'Already got an account? Login' : 'Not got an account? Register'}
+                style={styles.registerButton}
+                onPress={() => setShowRegister(!showRegister)} />
 
-            </>}
         </Mk_Screen>
     )
 }
@@ -171,11 +163,6 @@ const styles = StyleSheet.create({
         marginRight: 10,
         alignSelf: 'center',
         alignItems: 'flex-end',
-    },
-    loadingIndicator: {
-        height: '100%',
-        alignSelf: 'center',
-        color: colours.primary
     },
     loginButton: {
         marginTop: 15

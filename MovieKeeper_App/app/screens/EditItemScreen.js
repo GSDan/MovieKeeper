@@ -1,55 +1,34 @@
-import { StyleSheet, Text, View, Image, ActivityIndicator, Alert, Modal } from 'react-native'
+import { StyleSheet, Text, View, Image, Alert } from 'react-native'
 import React, { useState, useEffect, useContext } from 'react'
 import Toast from 'react-native-root-toast';
 
 import Screen from "../components/Mk_Screen";
 import colours from '../config/colours';
-import { addToLibrary, deleteFromLibrary, getFromTitle } from '../api/libraryItems';
+import { addSingleToLibrary, deleteFromLibrary } from '../api/libraryItems';
 import Stars from "../components/Mk_Stars";
 import Mk_RoundButton from '../components/Mk_RoundButton';
 import Mk_RottenScore from '../components/Mk_RottenScore';
 import Mk_ImdbScore from '../components/Mk_ImdbScore';
 import Mk_FormatCheckbox from '../components/Mk_FormatCheckbox';
 import { AuthContext } from '../hooks/userAuthentication';
-import Mk_TextSearch from '../components/Mk_TextSearch';
+import Mk_ModalSearch from '../components/Mk_ModalSearch';
+import Mk_FormatSelector from '../components/Mk_FormatSelector';
 import Mk_Button from '../components/Mk_Button';
 
 export default function EditItemScreen({ navigation, route })
 {
-    const [dvdChecked, setDvdChecked] = useState(false);
-    const [bluChecked, setBluChecked] = useState(false);
-    const [uhdChecked, setUhdChecked] = useState(false);
+    const [selectedFormats, setSelectedFormats] = useState([]);
     const [userRating, setUserRating] = useState(null);
     const [showSetTitleModal, setShowSetTitleModal] = useState(false);
-    const [searchText, setSearchText] = useState("");
-    const [searchError, setSearchError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [changed, setChanged] = useState(true);
-    const [movie, setMovie] = useState({})
+    const [media, setMedia] = useState({})
     const [error, setError] = useState(null);
     const authContext = useContext(AuthContext);
 
     const mode = route.params.mode;
-    const media = route.params.media;
     const barcode = route.params.barcode;
-    const isBoxset = media.length > 1;
     const existingFormats = route.params.formats;
-
-    const addFormat = (format) =>
-    {
-        switch (format)
-        {
-            case '4K':
-                setUhdChecked(true);
-                break;
-            case 'Blu-ray':
-                setBluChecked(true);
-                break;
-            case 'DVD':
-                setDvdChecked(true);
-                break;
-        }
-    }
 
     useEffect(() =>
     {
@@ -61,10 +40,10 @@ export default function EditItemScreen({ navigation, route })
             }
             else 
             {
-                setMovie(media[0]);
+                setMedia(route.params.media);
                 if (mode === 'edit')
                 {
-                    setUserRating(movie.UserRating)
+                    setUserRating(media.UserRating)
 
                     if (existingFormats)
                     {
@@ -83,32 +62,10 @@ export default function EditItemScreen({ navigation, route })
         })();
     }, []);
 
-    const searchOmdb = async (title) =>
+    const updateFormats = (formats) => 
     {
-        if (!title) return setError('Please enter a movie title');
-
-        setLoading(true);
-        const resp = await getFromTitle(title);
-
-        if (!resp || !resp.data || !resp.data.success)
-        {
-            setLoading(false);
-            return setSearchError(resp && resp.data ? "Couldn't find a movie with that title" : "Something went wrong")
-        }
-
-        setSearchError(null);
-        let data = resp.data.data;
-
-        if (data.Ratings)
-        {
-            const rotten = data.Ratings.find(r => r.Source === 'Rotten Tomatoes');
-            if (rotten) data.ScoreRotten = rotten.Value;
-        }
-
-        setMovie(data);
-
-        setLoading(false);
-        setShowSetTitleModal(false);
+        setSelectedFormats(formats);
+        setChanged(true);
     }
 
     const saveToDb = async () =>
@@ -117,17 +74,11 @@ export default function EditItemScreen({ navigation, route })
 
         setLoading(true)
 
-        let formats = [];
-
-        if (dvdChecked) formats.push('DVD');
-        if (bluChecked) formats.push('Blu-ray');
-        if (uhdChecked) formats.push('4K')
-
-        if (barcode) movie.Barcode = barcode;
+        if (barcode) media.Barcode = barcode;
 
         try
         {
-            await addToLibrary(movie, userRating, formats);
+            await addSingleToLibrary(media, userRating, selectedFormats);
         }
         catch (error)
         {
@@ -137,7 +88,7 @@ export default function EditItemScreen({ navigation, route })
         setLoading(false);
         authContext.setShouldRefreshContent(true);
 
-        Toast.show((mode === 'edit' ? 'Updated ' : 'Added ') + movie.Title, {
+        Toast.show((mode === 'edit' ? 'Updated ' : 'Added ') + media.Title, {
             duration: Toast.durations.LONG,
         });
 
@@ -148,7 +99,7 @@ export default function EditItemScreen({ navigation, route })
     {
         Alert.alert(
             'Confirm',
-            `Are you sure you want to delete ${movie.Title} from your library?`,
+            `Are you sure you want to delete ${media.Title} from your library?`,
             [
                 {
                     text: 'Cancel',
@@ -162,9 +113,9 @@ export default function EditItemScreen({ navigation, route })
                         try
                         {
                             setLoading(true);
-                            await deleteFromLibrary(movie.Type, movie.imdbID)
+                            await deleteFromLibrary(media.Type, media.imdbID)
                             authContext.setShouldRefreshContent(true);
-                            Toast.show('Deleted ' + movie.Title, {
+                            Toast.show('Deleted ' + media.Title, {
                                 duration: Toast.durations.LONG,
                             });
                             navigation.pop();
@@ -182,129 +133,107 @@ export default function EditItemScreen({ navigation, route })
     }
 
     return (
-        <Screen>
+        <Screen loading={loading}>
             {error && <Text>{error}</Text>}
 
-            {/* LOADING VIEW */}
-            {loading &&
-                <ActivityIndicator animating={loading} style={styles.loadingIndicator} size="large" />
-            }
+            <View style={styles.movieContainer}>
+                <Image style={styles.movieImage} source={{ uri: media.Poster }} />
+                <Text
+                    numberOfLines={2}
+                    style={styles.movieTitle}>
+                    {media.Title}
+                </Text>
+                <Text style={styles.movieDetails} numberOfLines={2}>
+                    {media.Actors}
+                </Text>
+                <Text style={styles.movieDetails} numberOfLines={2}>
+                    Directed by {media.Director}
+                </Text>
 
-            {!loading &&
-                <View style={styles.movieContainer}>
-                    <Image style={styles.movieImage} source={{ uri: movie.Poster }} />
-                    <Text
-                        numberOfLines={2}
-                        style={styles.movieTitle}>
-                        {movie.Title}
-                    </Text>
-                    <Text style={styles.movieDetails} numberOfLines={2}>
-                        {movie.Actors}
-                    </Text>
-                    <Text style={styles.movieDetails} numberOfLines={2}>
-                        Directed by {movie.Director}
-                    </Text>
-                    <Text style={styles.movieDetails}>
-                        {movie.Rated} | {movie.Year} | {movie.Runtime}
+                <View style={{ flexDirection: 'row', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={styles.minorDetails}>
+                        {media.Rated} | {media.Year} | {media.Runtime}
                     </Text>
 
                     <View style={styles.movieRatingsContainer}>
-                        {movie.ScoreRotten && <Mk_RottenScore score={movie.ScoreRotten} />}
-                        {movie.imdbRating &&
+                        {media.ScoreRotten && <Mk_RottenScore score={media.ScoreRotten} />}
+                        {media.imdbRating &&
                             <Mk_ImdbScore
-                                score={movie.imdbRating}
-                                style={{ marginLeft: movie.ScoreRotten ? 8 : 0 }} />}
+                                score={media.imdbRating}
+                                style={{ marginLeft: media.ScoreRotten ? 8 : 0 }} />}
                     </View>
-
-                    <Text style={styles.sectionHeader}>Your Rating</Text>
-
-                    <Stars
-                        value={userRating}
-                        isTouchable={true}
-                        containerStyle={styles.starContainer}
-                        starStyle={styles.stars}
-                        onPress={(score) => { setChanged(true); setUserRating(score) }} />
-
-                    <Text style={styles.sectionHeader}>Owned Formats</Text>
-
-                    <View style={styles.ownedFormatsContainer}>
-                        <Mk_FormatCheckbox
-                            formatName={'DVD'}
-                            checked={dvdChecked}
-                            onValueChange={(val) =>
-                            {
-                                setChanged(true);
-                                setDvdChecked(val);
-                            }} />
-
-                        <Mk_FormatCheckbox
-                            formatName={'Blu-ray'}
-                            checked={bluChecked}
-                            onValueChange={(val) =>
-                            {
-                                setChanged(true);
-                                setBluChecked(val);
-                            }} />
-
-                        <Mk_FormatCheckbox
-                            formatName={'4K'}
-                            checked={uhdChecked}
-                            onValueChange={(val) =>
-                            {
-                                setChanged(true);
-                                setUhdChecked(val);
-                            }} />
-                    </View>
-
-                    <Mk_RoundButton
-                        style={styles.cancelButton}
-                        icon={mode === 'edit' ? 'delete-forever' : 'close'}
-                        onPress={() => mode === 'edit' ? confirmDeletion() : navigation.pop()} />
-
-                    <Mk_RoundButton
-                        style={styles.saveButton}
-                        icon={mode === 'edit' ? 'content-save' : 'plus-thick'}
-                        onPress={() => saveToDb()} />
                 </View>
-            }
 
-            <Modal
-                visible={showSetTitleModal}
-                animationType={'slide'}>
 
-                {loading &&
-                    <ActivityIndicator animating={loading} style={styles.loadingIndicator} size="large" />
-                }
+                <Text style={styles.sectionHeader}>Your Rating</Text>
 
-                {!loading &&
-                    <View style={styles.titleModal}>
-                        <Text style={styles.titleModalheader}>Hmm.</Text>
-                        <Text style={styles.titleModalText}>We couldn't find a movie or show with that barcode. Please enter the title to help others find it.</Text>
+                <Stars
+                    value={userRating}
+                    isTouchable={true}
+                    containerStyle={styles.starContainer}
+                    starStyle={styles.stars}
+                    onPress={(score) => { setChanged(true); setUserRating(score) }} />
 
-                        {searchError &&
-                            <Text style={styles.error}>
-                                {searchError}
-                            </Text>
-                        }
+                <Text style={styles.sectionHeader}>Owned Formats</Text>
 
-                        <Mk_TextSearch
-                            onChangeText={(text) => setSearchText(text)}
-                            onPress={() => searchOmdb(searchText)}
-                            placeholder={"Enter a movie or show's title..."} />
-                        <Mk_Button
-                            style={styles.titleModalClose}
-                            text={'Cancel'}
-                            onPress={() => navigation.pop()} />
+                <Mk_FormatSelector onFormatsChange={updateFormats} />
+
+                {/* TODO: give option to change movie associated with barcode, create boxset from recognised movie title */}
+
+                {/* {barcode &&
+                    <View>
+                        <Mk_Button style={styles.wrongMovieBtn}
+                            text={'Wrong movie?'}
+                            icon={'alert-circle'}
+                            onPress={() => saveToDb()} />
+
+                        <Mk_Button style={styles.boxsetBtn}
+                            text={'Add as a boxset'}
+                            icon={'plus-box-multiple'}
+                            onPress={() => saveToDb()} />
                     </View>
-                }
+                } */}
 
-            </Modal>
 
+                <Mk_RoundButton
+                    style={styles.cancelButton}
+                    icon={mode === 'edit' ? 'delete-forever' : 'close'}
+                    onPress={() => mode === 'edit' ? confirmDeletion() : navigation.pop()} />
+
+                <Mk_RoundButton
+                    style={styles.saveButton}
+                    icon={mode === 'edit' ? 'content-save' : 'plus-thick'}
+                    onPress={() => saveToDb()} />
+            </View>
+
+            <Mk_ModalSearch
+                show={showSetTitleModal}
+                headerText={"Hmm."}
+                subHeaderText={"We couldn't find a movie or show with that barcode. Please enter the title to help others find it."}
+                onResult={(res) =>
+                {
+                    setShowSetTitleModal(false);
+                    setMedia(res);
+                }}
+                secondaryButtonText={'This is a boxset of multiple movies'}
+                secondaryButtonAction={() => navigation.replace("Boxset",
+                    {
+                        'media': [],
+                        'likelyFormat': existingFormats,
+                        'barcode': barcode
+                    }
+                )}
+                cancelButtonString={'Cancel'}
+                cancelButtonAction={() => navigation.pop()}
+            />
         </Screen>
     )
 }
 
 const styles = StyleSheet.create({
+    boxsetBtn: {
+
+    },
     cancelButton: {
         position: 'absolute',
         bottom: 20,
@@ -313,34 +242,6 @@ const styles = StyleSheet.create({
         height: 50,
         backgroundColor: colours.primary,
         iconSize: 30
-    },
-    titleModal: {
-        width: '100%',
-        height: '100%',
-        padding: 20,
-        alignContent: 'center',
-        justifyContent: 'center'
-    },
-    titleModalheader: {
-        textAlign: 'center',
-        fontWeight: 'bold',
-        fontSize: 20,
-        marginVertical: 10
-    },
-    titleModalText: {
-        textAlign: 'center',
-        marginBottom: 15
-    },
-    titleModalClose: {
-        position: 'absolute',
-        bottom: 25
-    },
-    error: {
-        width: '100%',
-        textAlign: 'center',
-        paddingHorizontal: 10,
-        marginBottom: 10,
-        color: 'red'
     },
     saveButton: {
         position: 'absolute',
@@ -362,18 +263,18 @@ const styles = StyleSheet.create({
     },
     movieImage: {
         width: '100%',
-        height: '40%',
+        height: '37%',
     },
     movieRatingsContainer: {
-        marginTop: 10,
+        marginTop: 5,
         flexDirection: "row",
         fontSize: 18,
-        width: '100%',
+        width: '40%',
         justifyContent: 'center'
     },
     movieTitle: {
         marginTop: 10,
-        marginBottom: 10,
+        marginBottom: 8,
         width: '100%',
         fontSize: 28,
         fontWeight: 'bold',
@@ -383,15 +284,16 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: colours.medium
     },
-    ownedFormatsContainer: {
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'center'
+    minorDetails: {
+        textAlign: 'center',
+        color: colours.medium,
+        width: '40%',
+        alignSelf: 'center'
     },
     sectionHeader: {
         width: '100%',
         textAlign: 'center',
-        marginVertical: 12,
+        marginVertical: 8,
         fontWeight: 'bold'
     },
     starContainer: {

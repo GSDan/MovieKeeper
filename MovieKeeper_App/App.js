@@ -14,14 +14,27 @@ import ProfileScreen from './app/screens/ProfileScreen'
 import LoginScreen from './app/screens/LoginScreen';
 import { useAuthChange, AuthContext } from './app/hooks/userAuthentication';
 import Mk_Screen from './app/components/Mk_Screen';
+import EditBoxsetScreen from './app/screens/EditBoxsetScreen';
 
 const AddStack = createNativeStackNavigator();
 const AddStackNavigator = () => (
   <AddStack.Navigator>
-    <AddStack.Screen name="Search" options={{ headerShown: false }} component={AddItemScreen} />
+    <AddStack.Screen
+      name="Search"
+      options={{ headerShown: false }}
+      component={AddItemScreen} />
     <AddStack.Screen
       name="Edit"
       component={EditItemScreen}
+      options={{
+        headerShown: false,
+        presentation: 'modal',
+        animation: 'slide_from_bottom'
+      }}
+    />
+    <AddStack.Screen
+      name="Boxset"
+      component={EditBoxsetScreen}
       options={{
         headerShown: false,
         presentation: 'modal',
