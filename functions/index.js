@@ -245,11 +245,20 @@ exports.getMovieFromTitle = functions.https.onCall(async (data, context) =>
 {
   if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
 
-  const omdbResp = await queryOmdb(data.title);
-  if (omdbResp.success)
+  try
   {
-    return omdbResp;
+    const omdbResp = await queryOmdb(data.title);
+    if (omdbResp.success)
+    {
+      return omdbResp;
+    }
+
   }
+  catch (error)
+  {
+    console.log(error)
+  }
+
   return { "success": false };
 });
 
@@ -416,6 +425,11 @@ exports.addMovieToLibrary = functions.https.onCall(async (data, context) =>
       'imdbRating': data.imdbRating
     }
 
+    if (data.totalSeasons)
+    {
+      newData.totalSeasons = data.totalSeasons;
+    }
+
     if (data.Ratings)
     {
       const rotten = data.Ratings.find(r => r.Source === 'Rotten Tomatoes');
@@ -451,11 +465,14 @@ exports.addMovieToLibrary = functions.https.onCall(async (data, context) =>
     }
   }
 
+  let userData = {
+    'UserRating': data.UserRating,
+    'Added': Date.now(),
+    'Formats': data.OwnedFormats
+  };
+
+  if (data.OwnedSeasons) userData.OwnedSeasons = data.OwnedSeasons;
+
   const libraryRef = db.collection('Users').doc(context.auth.uid).collection(mediaType).doc(data.imdbID);
-  return libraryRef.set(
-    {
-      'UserRating': data.UserRating,
-      'Added': Date.now(),
-      'Formats': data.OwnedFormats
-    });
+  return libraryRef.set(userData);
 });

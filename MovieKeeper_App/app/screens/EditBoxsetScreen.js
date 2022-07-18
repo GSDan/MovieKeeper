@@ -1,5 +1,5 @@
 import { StyleSheet, Text, FlatList } from 'react-native'
-import React, { useState, useContext } from 'react'
+import React, { useState, useContext, useLayoutEffect } from 'react'
 import Toast from 'react-native-root-toast';
 
 import Screen from "../components/Mk_Screen";
@@ -13,8 +13,9 @@ import { addBoxetToLibrary } from '../api/libraryItems';
 
 export default function EditBoxsetScreen({ navigation, route })
 {
-    const [media, setMedia] = useState([])
-    const [userRatings, setUserRatings] = useState([])
+    const [media, setMedia] = useState([]);
+    const [userRatings, setUserRatings] = useState({});
+    const [initialFormats, setInitialFormats] = useState([]);
     const [selectedFormats, setSelectedFormats] = useState([]);
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -22,6 +23,23 @@ export default function EditBoxsetScreen({ navigation, route })
     const authContext = useContext(AuthContext);
 
     const barcode = route.params.barcode;
+
+    useLayoutEffect(() =>
+    {
+        if (route.params.media)
+        {
+            setMedia(route.params.media);
+        }
+        if (route.params.likelyFormat)
+        {
+            setInitialFormats(route.params.likelyFormat);
+        }
+        if (route.params.userRatings)
+        {
+            setUserRatings(route.params.userRatings);
+        }
+        setRerenderList(!rerenderList);
+    }, []);
 
     const addMedia = (newMedia) =>
     {
@@ -76,16 +94,17 @@ export default function EditBoxsetScreen({ navigation, route })
             duration: Toast.durations.LONG,
         });
 
-        navigation.pop()
+        navigation.popToTop();
     }
 
     return (
         <Screen style={styles.boxsetContainer} loading={loading}>
 
-            <Text style={styles.header}>Create Movie Boxset</Text>
+            <Text style={styles.header}>Add Movie Boxset</Text>
 
             <Text style={styles.formatSubheader}>This boxset's format(s):</Text>
             <Mk_FormatSelector
+                initialFormats={initialFormats}
                 onFormatsChange={setSelectedFormats} />
 
             <FlatList
@@ -171,7 +190,7 @@ const styles = StyleSheet.create({
         marginVertical: 10
     },
     finishBtnLocked: {
-        marginTop: 10,
+        marginVertical: 10,
         backgroundColor: colours.primary_light
     }
 })

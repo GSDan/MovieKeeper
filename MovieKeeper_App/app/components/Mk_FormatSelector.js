@@ -3,11 +3,38 @@ import React, { useState, useEffect } from 'react'
 
 import Mk_FormatCheckbox from './Mk_FormatCheckbox';
 
-export default function Mk_FormatSelector({ onFormatsChange, style })
+export default function Mk_FormatSelector({ initialFormats, onFormatsChange, style })
 {
     const [dvdChecked, setDvdChecked] = useState(false);
     const [bluChecked, setBluChecked] = useState(false);
     const [uhdChecked, setUhdChecked] = useState(false);
+
+    useEffect(() => 
+    {
+        let dvd, blu, uhd;
+        dvd = blu = uhd = false;
+
+        initialFormats.forEach(format =>
+        {
+            switch (format)
+            {
+                case '4K':
+                    uhd = true;
+                    break;
+                case 'Blu-ray':
+                    blu = true;
+                    break;
+                case 'DVD':
+                    dvd = true;
+                    break;
+            }
+        });
+
+        setUhdChecked(uhd);
+        setBluChecked(blu);
+        setDvdChecked(dvd);
+
+    }, [initialFormats]);
 
     useEffect(() =>
     {
@@ -17,7 +44,21 @@ export default function Mk_FormatSelector({ onFormatsChange, style })
         if (bluChecked) formats.push('Blu-ray');
         if (uhdChecked) formats.push('4K');
 
-        onFormatsChange(formats);
+        let changed = initialFormats.length !== formats.length;
+        if (!changed)
+        {
+            // this assumes they're in the same order, which they should be
+            for (let i = 0; i < formats.length; i++)
+            {
+                if (formats[i] !== initialFormats[i])
+                {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        if (changed) onFormatsChange(formats);
 
     }, [dvdChecked, bluChecked, uhdChecked])
 

@@ -292,9 +292,16 @@ export default function LibraryScreen({ navigation })
                 </View>}
 
                 ListFooterComponentStyle={styles.listFooter}
-                ListFooterComponent={<Text style={styles.legal} numberOfLines={2}>
-                    The Fresh Tomato® and Rotten Splat® logos are registered trademarks of Fandango Media LLC.
-                </Text>}
+                ListFooterComponent={
+                    <>
+                        {sortedData.length > 0 &&
+                            <Text style={styles.legal} numberOfLines={2}>
+                                The Fresh Tomato® and Rotten Splat® logos are registered trademarks of Fandango Media LLC.
+                            </Text>
+                        }
+                    </>
+
+                }
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={fetchLibraryData} />
                 }
@@ -346,9 +353,7 @@ export default function LibraryScreen({ navigation })
                                 }
                             </Picker>
                         </>
-
                     }
-
 
                     {filterField && filterField != 'None' &&
 

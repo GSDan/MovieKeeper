@@ -61,6 +61,9 @@ export default function AddItemScreen({ navigation })
 
     const openScanner = () =>
     {
+        // uncomment to fake barcode scan in simulator
+        //handleBarCodeScanned({ data: '704400103612' });
+
         setScannerVisible(true);
         if (showRegionExplainer)
         {
@@ -153,6 +156,7 @@ export default function AddItemScreen({ navigation })
             }
             else if (!resp.data.success)
             {
+                setError(null);
                 navigation.navigate("Edit",
                     {
                         'media': {},
