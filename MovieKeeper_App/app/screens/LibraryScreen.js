@@ -1,5 +1,5 @@
 import { StyleSheet, FlatList, Text, RefreshControl, View, TouchableOpacity, Modal, useWindowDimensions } from 'react-native'
-import React, { useState, useContext, useLayoutEffect, useEffect } from 'react'
+import React, { useState, useContext, useEffect, useCallback } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -57,11 +57,14 @@ export default function LibraryScreen({ navigation })
     const [filterValue, setFilterValue] = useState(null);
     const [filterOptions, setFilterOptions] = useState(null);
     const [rerenderList, setRerenderList] = useState(true)
+    const [shouldRefresh, setShouldRefresh] = useState(true);
     const [showSortFilterModal, setShowSortFilterModal] = useState(false);
     const authContext = useContext(AuthContext);
 
     useEffect(() =>
     {
+        var isMounted = true;
+
         async function loadConf()
         {
             let storedLibrary;
@@ -76,6 +79,8 @@ export default function LibraryScreen({ navigation })
                 getString('sortAsc').then(data => previousSortAsc = data)
             ])
 
+            if (!isMounted) return;
+
             if (storedLibrary) setLibraryData(storedLibrary);
 
             if (anyPrevious) setFirstScan(false);
@@ -87,9 +92,10 @@ export default function LibraryScreen({ navigation })
             }
         }
         loadConf();
+        return () => { isMounted = false; }
     }, [])
 
-    useLayoutEffect(() =>
+    useEffect(() =>
     {
         navigation.setOptions({
             headerRight: () => (
@@ -107,12 +113,11 @@ export default function LibraryScreen({ navigation })
                             size={30} />
                     </TouchableOpacity>
                 </View>
-            ),
-
+            )
         });
-    }, [sortAsc]);
+    }, [navigation, sortAsc]);
 
-    useLayoutEffect(() =>
+    useEffect(() =>
     {
         // Get genres and age ratings for picker
         let genreSet = new Set();
@@ -122,14 +127,12 @@ export default function LibraryScreen({ navigation })
             genres.forEach((genre => genreSet.add(genre)));
         });
 
-
         setFilterOptions({
             'None': null,
             'Formats': ['DVD', 'Blu-ray', '4K'],
             'Rated': ['G', 'PG', 'PG-13', 'R', 'NC-17'],
             'Genre': Array.from(genreSet).sort()
         })
-
     }, [libraryData])
 
 
@@ -184,14 +187,45 @@ export default function LibraryScreen({ navigation })
                         .localeCompare(removeArticles(first['Title'].toLowerCase()));
             }
         });
-
         setSortedData(sorted);
         setRerenderList(!rerenderList);
     }, [sortBy, sortAsc, mediaType, filterField, filterValue, libraryData])
 
-    useFocusEffect(
-        () => { if (authContext.shouldRefreshContent) fetchLibraryData(); }
-    ), [];
+    useFocusEffect(() =>
+    {
+        if (authContext.shouldRefreshContent && !refreshing) 
+        {
+            fetchData();
+        }
+    }
+    );
+
+    const fetchData = useCallback(() =>
+    {
+        var isMounted = true;
+        async function fetchData()
+        {
+            if (!isMounted || !shouldRefresh) return;
+
+            setShouldRefresh(false);
+            setRefreshing(true);
+
+            const result = await getLibrary();
+
+            if (!isMounted) return;
+
+            if (result.data)
+            {
+                setLibraryData(result.data);
+                setData('library', result.data);
+            }
+
+            authContext.setShouldRefreshContent(false);
+            setRefreshing(false);
+        }
+        fetchData();
+        return () => { isMounted = false; }
+    }, [])
 
     // https://stackoverflow.com/a/34347138/1377099
     function removeArticles(str)
@@ -203,31 +237,6 @@ export default function LibraryScreen({ navigation })
             return words.splice(1).join(" ");
         }
         return str;
-    }
-
-    const fetchLibraryData = async () =>
-    {
-        try
-        {
-            if (refreshing) return;
-
-            setRefreshing(true);
-            const result = await getLibrary();
-
-            if (result.data)
-            {
-                setLibraryData(result.data);
-                setData('library', result.data);
-            }
-
-            authContext.setShouldRefreshContent(false);
-            setRefreshing(false);
-        }
-        catch (error)
-        {
-            setRefreshing(false);
-            console.log(error);
-        }
     }
 
     const openForEditing = (mediaItem) =>
@@ -303,7 +312,7 @@ export default function LibraryScreen({ navigation })
 
                 }
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={fetchLibraryData} />
+                    <RefreshControl refreshing={refreshing} onRefresh={() => fetchData()} />
                 }
             />
 

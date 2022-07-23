@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Image, Alert, Modal, FlatList } from 'react-native'
+import { StyleSheet, Text, View, Image, Alert, Modal, FlatList, useWindowDimensions } from 'react-native'
 import React, { useState, useContext, useLayoutEffect } from 'react'
 import Toast from 'react-native-root-toast';
 
@@ -62,6 +62,9 @@ export default function EditItemScreen({ navigation, route })
         setChanged(true);
         setRerenderList(!rerenderList);
     }
+
+    const dimensions = useWindowDimensions();
+    const landscape = dimensions.width > dimensions.height;
 
     useLayoutEffect(() =>
     {
@@ -184,103 +187,108 @@ export default function EditItemScreen({ navigation, route })
         <Screen loading={loading}>
             {error && <Text>{error}</Text>}
 
-            <View style={styles.movieContainer}>
-                <Image style={styles.movieImage} source={{ uri: media.Poster }} />
-                <Text
-                    numberOfLines={2}
-                    style={styles.movieTitle}>
-                    {media.Title}
-                </Text>
-                <Text style={styles.movieDetails} numberOfLines={2}>
-                    {media.Actors}
-                </Text>
-                {media.Director !== "N/A" &&
+            <View style={landscape ? styles.landscapeContainer : styles.portraitContainer}>
+                <Image style={landscape ? styles.movieImageLandscape : styles.movieImagePortrait}
+                    source={{ uri: media.Poster }}
+                    resizeMode={landscape ? 'contain' : 'cover'} />
+                <View style={landscape ? styles.landscapeDetailsContainer : styles.portraitDetailsContainer}>
+                    <Text
+                        numberOfLines={2}
+                        style={styles.movieTitle}>
+                        {media.Title}
+                    </Text>
                     <Text style={styles.movieDetails} numberOfLines={2}>
-                        Directed by {media.Director}
+                        {media.Actors}
                     </Text>
-                }
-                <View style={styles.movieDetailsRow}>
-                    <Text style={styles.minorDetails}>
-                        {media.Rated} | {media.Year} | {media.Runtime}
-                    </Text>
+                    {media.Director !== "N/A" &&
+                        <Text style={styles.movieDetails} numberOfLines={2}>
+                            Directed by {media.Director}
+                        </Text>
+                    }
+                    <View style={styles.movieDetailsRow}>
+                        <Text style={styles.minorDetails}>
+                            {media.Rated} | {media.Year} | {media.Runtime}
+                        </Text>
 
-                    <View style={styles.movieRatingsContainer}>
-                        {media.ScoreRotten && <Mk_RottenScore score={media.ScoreRotten} />}
-                        {media.imdbRating &&
-                            <Mk_ImdbScore
-                                score={media.imdbRating}
-                                style={{ marginLeft: media.ScoreRotten ? 8 : 0 }} />}
+                        <View style={styles.movieRatingsContainer}>
+                            {media.ScoreRotten && <Mk_RottenScore score={media.ScoreRotten} />}
+                            {media.imdbRating &&
+                                <Mk_ImdbScore
+                                    score={media.imdbRating}
+                                    style={{ marginLeft: media.ScoreRotten ? 8 : 0 }} />}
+                        </View>
                     </View>
+
+
+                    <Text style={styles.sectionHeader}>Your Rating</Text>
+
+                    <Stars
+                        value={userRating}
+                        isTouchable={true}
+                        containerStyle={styles.starContainer}
+                        starStyle={styles.stars}
+                        onPress={(score) => { setChanged(true); setUserRating(score) }} />
+
+                    <Text style={styles.sectionHeader}>Owned Formats</Text>
+
+                    <Mk_FormatSelector
+                        initialFormats={initialFormats}
+                        onFormatsChange={updateFormats} />
+
+                    {barcode && media.Type === 'movie' &&
+                        <View style={styles.barcodeBtnsContainer}>
+                            <Mk_Button style={styles.wrongMovieBtn}
+                                text={'Wrong movie?'}
+                                icon={'magnify'}
+                                onPress={() =>
+                                {
+                                    setModalMessage("We got the wrong movie? Oops! Enter the correct title below and tap search.");
+                                    setShowSetTitleModal(true);
+                                }} />
+
+                            <Mk_Button style={styles.boxsetBtn}
+                                text={'Add as a boxset'}
+                                icon={'plus-box-multiple'}
+                                onPress={() =>
+                                {
+                                    navigation.navigate("Boxset",
+                                        {
+                                            'media': [media],
+                                            'likelyFormat': selectedFormats,
+                                            'userRatings': {
+                                                [media.imdbID]: userRating
+                                            },
+                                            'barcode': barcode
+                                        }
+                                    )
+                                }
+                                }
+                            />
+                        </View>
+                    }
+
+                    {media.Type === 'series' &&
+                        <Mk_Button style={styles.seasonsBtn}
+                            text={getSeasonsString()}
+                            icon={'television-classic'}
+                            onPress={() =>
+                            {
+                                setShowSelectSeasonsModal(true);
+                            }} />
+                    }
+
+
+                    <Mk_RoundButton
+                        style={styles.cancelButton}
+                        icon={mode === 'edit' ? 'delete-forever' : 'close'}
+                        onPress={() => mode === 'edit' ? confirmDeletion() : navigation.pop()} />
+
+                    <Mk_RoundButton
+                        style={styles.saveButton}
+                        icon={'content-save'}
+                        onPress={() => saveToDb()} />
                 </View>
 
-
-                <Text style={styles.sectionHeader}>Your Rating</Text>
-
-                <Stars
-                    value={userRating}
-                    isTouchable={true}
-                    containerStyle={styles.starContainer}
-                    starStyle={styles.stars}
-                    onPress={(score) => { setChanged(true); setUserRating(score) }} />
-
-                <Text style={styles.sectionHeader}>Owned Formats</Text>
-
-                <Mk_FormatSelector
-                    initialFormats={initialFormats}
-                    onFormatsChange={updateFormats} />
-
-                {barcode && media.Type === 'movie' &&
-                    <View style={styles.barcodeBtnsContainer}>
-                        <Mk_Button style={styles.wrongMovieBtn}
-                            text={'Wrong movie?'}
-                            icon={'magnify'}
-                            onPress={() =>
-                            {
-                                setModalMessage("We got the wrong movie? Oops! Enter the correct title below and tap search.");
-                                setShowSetTitleModal(true);
-                            }} />
-
-                        <Mk_Button style={styles.boxsetBtn}
-                            text={'Add as a boxset'}
-                            icon={'plus-box-multiple'}
-                            onPress={() =>
-                            {
-                                navigation.navigate("Boxset",
-                                    {
-                                        'media': [media],
-                                        'likelyFormat': selectedFormats,
-                                        'userRatings': {
-                                            [media.imdbID]: userRating
-                                        },
-                                        'barcode': barcode
-                                    }
-                                )
-                            }
-                            }
-                        />
-                    </View>
-                }
-
-                {media.Type === 'series' &&
-                    <Mk_Button style={styles.seasonsBtn}
-                        text={getSeasonsString()}
-                        icon={'television-classic'}
-                        onPress={() =>
-                        {
-                            setShowSelectSeasonsModal(true);
-                        }} />
-                }
-
-
-                <Mk_RoundButton
-                    style={styles.cancelButton}
-                    icon={mode === 'edit' ? 'delete-forever' : 'close'}
-                    onPress={() => mode === 'edit' ? confirmDeletion() : navigation.pop()} />
-
-                <Mk_RoundButton
-                    style={styles.saveButton}
-                    icon={'content-save'}
-                    onPress={() => saveToDb()} />
             </View>
 
             <Mk_ModalSearch
@@ -326,6 +334,7 @@ export default function EditItemScreen({ navigation, route })
                         data={ownedSeasons}
                         keyExtractor={(season) => season.num}
                         extraData={rerenderList}
+                        contentContainerStyle={{ alignItems: 'center' }}
                         renderItem={({ item }) => (
 
                             <View style={styles.seasonsModalRow}>
@@ -361,8 +370,8 @@ const styles = StyleSheet.create({
     },
     cancelButton: {
         position: 'absolute',
-        bottom: 20,
-        left: 20,
+        bottom: '3%',
+        left: '3%',
         width: 50,
         height: 50,
         backgroundColor: colours.primary,
@@ -370,8 +379,8 @@ const styles = StyleSheet.create({
     },
     saveButton: {
         position: 'absolute',
-        bottom: 20,
-        right: 20,
+        bottom: '3%',
+        right: '3%',
         width: 50,
         height: 50,
         backgroundColor: colours.save,
@@ -403,6 +412,7 @@ const styles = StyleSheet.create({
     seasonsModalRow: {
         flexDirection: "row",
         width: '100%',
+        maxWidth: 400,
         marginVertical: 3,
         backgroundColor: colours.very_light_grey,
         padding: 5
@@ -410,28 +420,43 @@ const styles = StyleSheet.create({
     seasonsModalNum: {
         flex: 1
     },
+    landscapeDetailsContainer: {
+        flex: 1,
+        padding: '3%',
+        marginHorizontal: '5%'
+    },
     loadingIndicator: {
         height: '100%',
         alignSelf: 'center',
         color: colours.primary
     },
-    movieContainer: {
+    portraitContainer: {
         width: '100%',
         height: '100%',
     },
-    movieImage: {
+    portraitDetailsContainer: {
+        flex: 1,
+        marginHorizontal: '5%'
+    },
+    movieImagePortrait: {
         width: '100%',
         height: '37%',
+    },
+    movieImageLandscape: {
+        height: '100%',
+        width: '50%',
+        backgroundColor: colours.dark
     },
     movieRatingsContainer: {
         flexDirection: "row",
         fontSize: 18,
         width: '40%',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        marginVertical: '1%'
     },
     movieTitle: {
-        marginTop: 10,
-        marginBottom: 8,
+        marginTop: '1%',
+        marginBottom: '1%',
         width: '100%',
         fontSize: 28,
         fontWeight: 'bold',
@@ -442,7 +467,7 @@ const styles = StyleSheet.create({
         color: colours.medium
     },
     movieDetailsRow: {
-        marginTop: 5,
+        marginTop: '1%',
         flexDirection: 'row',
         width: '100%',
         alignItems: 'center',
@@ -453,6 +478,10 @@ const styles = StyleSheet.create({
         color: colours.medium,
         width: '40%',
         alignSelf: 'center'
+    },
+    landscapeContainer: {
+        flexDirection: 'row',
+        height: '100%'
     },
     seasonsBtn: {
         backgroundColor: colours.secondary,
@@ -471,8 +500,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     stars: {
-        width: 35,
-        height: 35,
+        width: 27,
+        height: 27,
         marginHorizontal: 1
     }
 })
