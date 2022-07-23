@@ -46,6 +46,7 @@ const sortFields = [
 
 export default function LibraryScreen({ navigation })
 {
+    const [shouldRefresh, setShouldRefresh] = useState(false)
     const [refreshing, setRefreshing] = useState(false);
     const [libraryData, setLibraryData] = useState([]);
     const [firstScan, setFirstScan] = useState(true)
@@ -57,7 +58,6 @@ export default function LibraryScreen({ navigation })
     const [filterValue, setFilterValue] = useState(null);
     const [filterOptions, setFilterOptions] = useState(null);
     const [rerenderList, setRerenderList] = useState(true)
-    const [shouldRefresh, setShouldRefresh] = useState(true);
     const [showSortFilterModal, setShowSortFilterModal] = useState(false);
     const authContext = useContext(AuthContext);
 
@@ -133,7 +133,7 @@ export default function LibraryScreen({ navigation })
             'Rated': ['G', 'PG', 'PG-13', 'R', 'NC-17'],
             'Genre': Array.from(genreSet).sort()
         })
-    }, [libraryData])
+    }, [sortedData])
 
 
     useEffect(() =>
@@ -191,23 +191,24 @@ export default function LibraryScreen({ navigation })
         setRerenderList(!rerenderList);
     }, [sortBy, sortAsc, mediaType, filterField, filterValue, libraryData])
 
-    useFocusEffect(() =>
-    {
-        if (authContext.shouldRefreshContent && !refreshing) 
+    useFocusEffect(
+        React.useCallback(() =>
         {
-            fetchData();
-        }
-    }
+            console.log('focus')
+            if (authContext.shouldRefreshContent && !refreshing)
+            {
+                setShouldRefresh(true);
+            }
+        }, [authContext.shouldRefreshContent, refreshing])
     );
 
-    const fetchData = useCallback(() =>
+    useEffect(() =>
     {
         var isMounted = true;
         async function fetchData()
         {
             if (!isMounted || !shouldRefresh) return;
 
-            setShouldRefresh(false);
             setRefreshing(true);
 
             const result = await getLibrary();
@@ -225,7 +226,7 @@ export default function LibraryScreen({ navigation })
         }
         fetchData();
         return () => { isMounted = false; }
-    }, [])
+    }, [shouldRefresh])
 
     // https://stackoverflow.com/a/34347138/1377099
     function removeArticles(str)
@@ -312,7 +313,7 @@ export default function LibraryScreen({ navigation })
 
                 }
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={() => fetchData()} />
+                    <RefreshControl refreshing={refreshing} onRefresh={() => setShouldRefresh(true)} />
                 }
             />
 

@@ -119,7 +119,7 @@ export default function EditItemScreen({ navigation, route })
 
     const saveToDb = async () =>
     {
-        if (!changed) return navigation.pop()
+        if (!changed) return navigation.popToTop();
 
         setLoading(true)
 
@@ -143,7 +143,7 @@ export default function EditItemScreen({ navigation, route })
             duration: Toast.durations.LONG,
         });
 
-        navigation.pop()
+        navigation.popToTop()
     }
 
     const confirmDeletion = async () =>
