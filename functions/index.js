@@ -3,6 +3,8 @@ const EbayAuthToken = require("ebay-oauth-nodejs-client");
 const axios = require("axios");
 const CircularJSON = require('circular-json');
 const admin = require('firebase-admin');
+const imdb = require('imdb-api')
+const nameToImdb = require("name-to-imdb");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -78,14 +80,50 @@ exports.getMovieFromBarcode = functions.https.onCall(async (data, context) =>
       return {
         'success': true,
         'likelyFormat': priorScan.Format,
-        'data': results
+        'previous': results
       }
     }
 
+    // We haven't got that barcode on file
+    // Search for it on ebay, and use the titles of the results to try to figure out the movie
+    // If there aren't any results from the user's requested eBay region, also check the US and GB
+    // as together they account for 50% of all ebay listings
+
     const tokenResp = await ebayAuthToken.getApplicationToken('PRODUCTION', ['https://api.ebay.com/oauth/api_scope']);
+    const accessToken = CircularJSON.parse(tokenResp).access_token;
+
+    let movieResults = null;
+    let regionStack = ['EBAY_GB', 'EBAY_US'];
+    if (data.region && !regionStack.includes(data.region))
+    {
+      regionStack.push(data.region);
+    }
+
+    while (!movieResults && regionStack.length > 0)
+    {
+      const ebayResp = await queryEbay(barcode, accessToken, regionStack.pop())
+      if (ebayResp)
+      {
+        movieResults = await getMovieFromEbayListings(ebayResp.data.itemSummaries);
+      }
+    }
+
+    return movieResults ?? { "success": false };
+  }
+  catch (error)
+  {
+    console.log(error);
+    return { "success": false, "data": error };;
+  }
+});
+
+const queryEbay = async function (barcode, token, region)
+{
+  try
+  {
     const headers = {
-      'Authorization': `Bearer ${CircularJSON.parse(tokenResp).access_token}`,
-      'X-EBAY-C-MARKETPLACE-ID': data.region ? data.region : 'EBAY_US'
+      'Authorization': `Bearer ${token}`,
+      'X-EBAY-C-MARKETPLACE-ID': region
     };
 
     let ebayResp = await axios.get(`https://api.ebay.com/buy/browse/v1/item_summary/search?gtin=${barcode}`, { 'headers': headers });
@@ -97,81 +135,80 @@ exports.getMovieFromBarcode = functions.https.onCall(async (data, context) =>
 
     if (!ebayResp || !ebayResp.data || ebayResp.data.total == 0)
     {
-      throw new Error("No results found");
+      ebayResp = null;
     }
 
-    let likelyFormat = "DVD";
-
-    // console.log(ebayResp.data.itemSummaries)
-
-    if (ebayResp.data.itemSummaries.length > 1)
-    {
-      // try to get a common sequence of words between the first 2 results
-      let commonWords = "";
-      const wordsInFirstRes = ebayResp.data.itemSummaries[0].title.split(" ");
-      const wordsInSecondRes = ebayResp.data.itemSummaries[1].title.split(" ");
-
-      for (let i = 0; i < wordsInFirstRes.length; i++)
-      {
-        // skip blanks and instances of 'the' 
-        // 'The' can sometimes be out of order (e.g. 'Avengers, The') causing mismatches
-        if (wordsInFirstRes[i] === "" || wordsInFirstRes[i].toLowerCase() == "the") continue;
-
-        for (let j = 0; j < wordsInSecondRes.length; j++)
-        {
-          // compare to lowercase without commas
-          const lhs = wordsInFirstRes[i].toLowerCase().replace(/,/g, '');
-          const rhs = wordsInFirstRes[j].toLowerCase().replace(/,/g, '');
-          if (lhs == rhs)
-          {
-            commonWords = `${commonWords} ${lhs}`;
-            break;
-          }
-        }
-      }
-
-      if (commonWords.length > 0)
-      {
-        console.log("Common:", commonWords)
-
-        let processedRes = processListingTitle(commonWords, likelyFormat)
-        likelyFormat = processedRes.likelyFormat;
-
-        const commonResp = await queryOmdb(processedRes.title);
-        if (commonResp.success)
-        {
-          commonResp.likelyFormat = likelyFormat;
-          commonResp.data = [commonResp.data];
-          return commonResp;
-        }
-      }
-    }
-
-    for (let i = 0; i < ebayResp.data.itemSummaries.length; i++)
-    {
-      let thisTitle = ebayResp.data.itemSummaries[i].title;
-      console.log(thisTitle);
-      let processedRes = processListingTitle(thisTitle, likelyFormat)
-      likelyFormat = processedRes.likelyFormat;
-      console.log(processedRes)
-
-      const omdbResp = await queryOmdb(processedRes.title);
-      if (omdbResp.success)
-      {
-        omdbResp.likelyFormat = likelyFormat;
-        omdbResp.data = [omdbResp.data]
-        return omdbResp;
-      }
-    }
-
-    return { "success": false, "likelyFormat": likelyFormat, "data": ebayResp.data.itemSummaries[0] };
+    return ebayResp;
   }
   catch (error)
   {
-    console.log(error);
-    return resp.send(error);
+    console.log(error)
+    return null;
   }
-});
+}
+
+const getMovieFromEbayListings = async function (ebayItems)
+{
+  let likelyFormat = "DVD";
+
+  if (ebayItems.length > 1)
+  {
+    // try to get a common sequence of words between the first 2 results
+    let commonWords = "";
+    const wordsInFirstRes = ebayItems[0].title.split(" ");
+    const wordsInSecondRes = ebayItems[1].title.split(" ");
+
+    for (let i = 0; i < wordsInFirstRes.length; i++)
+    {
+      // skip blanks and instances of 'the' 
+      // 'The' can sometimes be out of order (e.g. 'Avengers, The') causing mismatches
+      if (wordsInFirstRes[i] === "" || wordsInFirstRes[i].toLowerCase() == "the") continue;
+
+      for (let j = 0; j < wordsInSecondRes.length; j++)
+      {
+        // compare to lowercase without commas
+        const lhs = wordsInFirstRes[i].toLowerCase().replace(/,/g, '');
+        const rhs = wordsInFirstRes[j].toLowerCase().replace(/,/g, '');
+        if (lhs == rhs)
+        {
+          commonWords = `${commonWords} ${lhs}`;
+          break;
+        }
+      }
+    }
+
+    if (commonWords.length > 0)
+    {
+      let processedRes = processListingTitle(commonWords, likelyFormat)
+      likelyFormat = processedRes.likelyFormat;
+
+      let result = await attemptFromTitle(processedRes.title)
+      if (result) 
+      {
+        result.likelyFormat = likelyFormat;
+        return result;
+      }
+
+    }
+  }
+
+  for (let i = 0; i < ebayItems.length; i++)
+  {
+    let thisTitle = ebayItems[i].title;
+    let processedRes = processListingTitle(thisTitle, likelyFormat)
+    likelyFormat = processedRes.likelyFormat;
+
+    let result = await attemptFromTitle(processedRes.title)
+
+    if (result) 
+    {
+      result.likelyFormat = likelyFormat;
+      return result;
+    }
+  }
+
+  return null;
+}
 
 const processListingTitle = function (title, likelyFormat) 
 {
@@ -228,12 +265,64 @@ const processListingTitle = function (title, likelyFormat)
   }
 }
 
-const queryOmdb = async function (title)
+// Search imdb for items using the given title string,
+// and fetch additional details from OMDB for the first result
+const attemptFromTitle = async function (title)
 {
-  const omdbResp = await axios.get(`https://www.omdbapi.com/?t=${title}&apikey=${process.env.OMDB_KEY}`);
+  const imdbResp = await queryImdb(title);
+
+  if (imdbResp && imdbResp.length > 0)
+  {
+    const omdbResp = await queryOmdb(null, imdbResp[0].imdbID);
+    if (omdbResp.success)
+    {
+      omdbResp.imdb = imdbResp;
+      return omdbResp;
+    }
+  }
+
+  return null;
+}
+
+const queryImdb = async function (title)
+{
+  try
+  {
+    const imdbResp = await axios.get(`https://sg.media-imdb.com/suggests/${title.charAt().toLowerCase()}/${encodeURIComponent(title)}.json`);
+
+    if (imdbResp.status === '404') return [];
+
+    const parsedResults = JSON.parse((await imdbResp.data).match(/{.*}/g)).d;
+
+    if (!parsedResults || parsedResults.length === 0)
+    {
+      return [];
+    }
+
+    return parsedResults.map(imdbRes => 
+    {
+      return {
+        imdbID: imdbRes.id,
+        Title: imdbRes.l,
+        Year: imdbRes.y,
+        Type: imdbRes.q === 'feature' ? 'Movie' : imdbRes.q,
+        Poster: imdbRes.i ? imdbRes.i[0] : undefined,
+        Actors: imdbRes.s
+      }
+    })
+  } catch (error)
+  {
+    return [];
+  }
+}
+
+const queryOmdb = async function (title = null, id = null)
+{
+  let qType = id ? 'i' : 't';
+
+  const omdbResp = await axios.get(`https://www.omdbapi.com/?${qType}=${id ? id : title}&apikey=${process.env.OMDB_KEY}`);
   if (omdbResp && omdbResp.data && omdbResp.data.Response === "True")
   {
-    console.log("Found!", omdbResp.data.Title)
     return { "success": true, "data": omdbResp.data };
   }
 
@@ -247,7 +336,28 @@ exports.getMovieFromTitle = functions.https.onCall(async (data, context) =>
 
   try
   {
-    const omdbResp = await queryOmdb(data.title);
+    const omdbResp = await queryOmdb(title = data.title);
+    if (omdbResp.success)
+    {
+      return omdbResp;
+    }
+
+  }
+  catch (error)
+  {
+    console.log(error)
+  }
+
+  return { "success": false };
+});
+
+exports.getMovieFromImdbId = functions.https.onCall(async (data, context) =>
+{
+  if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
+
+  try
+  {
+    const omdbResp = await queryOmdb(null, data.id);
     if (omdbResp.success)
     {
       return omdbResp;
@@ -388,13 +498,36 @@ exports.addBoxsetToLibrary = functions.https.onCall(async (data, context) =>
     }).then(() =>
     {
       const libraryRef = db.collection('Users').doc(context.auth.uid).collection("Movies").doc(item.imdbID);
-      return libraryRef.set(
+      return libraryRef.get();
+    }).then((libraryItemSnapshot => 
+    {
+      let combinedFormats = [];
+      if (libraryItemSnapshot.exists)
+      {
+        let priorFormats = libraryItemSnapshot.Formats;
+        if (!priorFormats || priorFormats.length == 0)
+        {
+          combinedFormats = data.OwnedFormats;
+        }
+        else
+        {
+          ['DVD', 'Blu-ray', '4K'].forEach(format =>
+          {
+            if (combinedFormats.includes(format) || data.OwnedFormats.includes(format))
+            {
+              combinedFormats.push(format);
+            }
+          });
+        }
+      }
+
+      return libraryItemSnapshot.ref.set(
         {
           'UserRating': item.UserRating,
           'Added': Date.now(),
           'Formats': data.OwnedFormats
         });
-    }));
+    })));
   });
 
   return await Promise.all(promises);

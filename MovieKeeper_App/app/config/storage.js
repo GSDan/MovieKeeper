@@ -51,3 +51,45 @@ export const getData = async (key) =>
         console.log(e);
     }
 }
+
+export const loadCachedMatches = async (mediaItems) =>
+{
+    try
+    {
+        let combinedResults = mediaItems;
+        const fullLibrary = await getData('library');
+
+        let ratings = {};
+
+        if (fullLibrary)
+        {
+            for (let i = 0; i < mediaItems.length; i++)
+            {
+                // search for local copy of this item to pull in user's rating, formats etc
+                let existing = fullLibrary.find(mov => mediaItems[i].imdbID === mov.imdbID);
+                if (existing)
+                {
+                    existing.Prior = true;
+                    if (existing.UserRating) ratings[existing.imdbID] = existing.UserRating;
+                    combinedResults[i] = existing;
+                }
+                else if (mediaItems[i].Ratings)
+                {
+                    const rotten = mediaItems[i].Ratings.find(r => r.Source === 'Rotten Tomatoes');
+                    if (rotten) combinedResults[i].ScoreRotten = rotten.Value;
+                }
+            }
+        }
+
+
+        return {
+            'results': combinedResults,
+            'ratings': ratings
+        }
+
+    }
+    catch (error)
+    {
+
+    }
+}

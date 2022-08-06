@@ -1,10 +1,10 @@
 import { StyleSheet, Text, View, Image, Alert, Modal, FlatList, useWindowDimensions } from 'react-native'
-import React, { useState, useContext, useLayoutEffect } from 'react'
+import React, { useState, useContext, useLayoutEffect, useEffect } from 'react'
 import Toast from 'react-native-root-toast';
 
 import Screen from "../components/Mk_Screen";
 import colours from '../config/colours';
-import { addSingleToLibrary, deleteFromLibrary } from '../api/libraryItems';
+import { addSingleToLibrary, deleteFromLibrary, getFromId } from '../api/libraryItems';
 import Stars from "../components/Mk_Stars";
 import Mk_RoundButton from '../components/Mk_RoundButton';
 import Mk_RottenScore from '../components/Mk_RottenScore';
@@ -14,26 +14,32 @@ import Mk_ModalSearch from '../components/Mk_ModalSearch';
 import Mk_FormatSelector from '../components/Mk_FormatSelector';
 import Mk_Button from '../components/Mk_Button';
 import Checkbox from 'expo-checkbox';
+import Mk_CardWithAction from '../components/Mk_CardWithAction';
+import { loadCachedMatches } from '../config/storage';
+import Mk_ModalSearchResults from '../components/Mk_ModalSearchResults';
 
 export default function EditItemScreen({ navigation, route })
 {
     const defaultModalMessage = "We couldn't find a movie or show with that barcode. Please enter the title to help others find it.";
+    const mode = route.params.mode;
 
     const [userRating, setUserRating] = useState(null);
     const [showSetTitleModal, setShowSetTitleModal] = useState(false);
     const [modalMessage, setModalMessage] = useState(defaultModalMessage);
     const [initialFormats, setInitialFormats] = useState([]);
+    const [formatsChanged, setFormatsChanged] = useState(false);
     const [selectedFormats, setSelectedFormats] = useState([]);
     const [showSelectSeasonsModal, setShowSelectSeasonsModal] = useState(false);
     const [ownedSeasons, setOwnedSeasons] = useState([]);
     const [rerenderList, setRerenderList] = useState(true)
     const [loading, setLoading] = useState(false);
-    const [changed, setChanged] = useState(true);
+    const [changed, setChanged] = useState(mode !== 'edit');
     const [media, setMedia] = useState({})
+    const [alternatives, setAlternatives] = useState([]);
+    const [showAlternatives, setShowAlternatives] = useState(false);
     const [error, setError] = useState(null);
     const authContext = useContext(AuthContext);
 
-    const mode = route.params.mode;
     const barcode = route.params.barcode;
     const existingFormats = route.params.formats;
 
@@ -91,11 +97,13 @@ export default function EditItemScreen({ navigation, route })
                     {
                         setOwnedSeasons(route.params.media.OwnedSeasons);
                     }
-
-                    setChanged(false);
                 }
                 else
                 {
+                    if (route.params.alternatives)
+                    {
+                        setAlternatives(route.params.alternatives);
+                    }
                     if (route.params.likelyFormat)
                     {
                         setInitialFormats([route.params.likelyFormat]);
@@ -111,15 +119,28 @@ export default function EditItemScreen({ navigation, route })
         })();
     }, []);
 
-    const updateFormats = (formats) => 
+    // check if formats have changed
+    useEffect(() =>
     {
-        setSelectedFormats(formats);
-        setChanged(true);
-    }
+        let formatsChanged = initialFormats.length !== selectedFormats.length;
+        if (!formatsChanged)
+        {
+            // this assumes they're in the same order, which they should be
+            for (let i = 0; i < selectedFormats.length; i++)
+            {
+                if (selectedFormats[i] !== initialFormats[i])
+                {
+                    formatsChanged = true;
+                    break;
+                }
+            }
+        }
+        setFormatsChanged(formatsChanged);
+    }, [selectedFormats])
 
     const saveToDb = async () =>
     {
-        if (!changed) return navigation.popToTop();
+        if (!changed && !formatsChanged) return navigation.popToTop();
 
         setLoading(true)
 
@@ -144,6 +165,24 @@ export default function EditItemScreen({ navigation, route })
         });
 
         navigation.popToTop()
+    }
+
+    const changeSelection = async (imdbRes) => 
+    {
+        setLoading(true);
+        const omdbRes = await getFromId(imdbRes.imdbID);
+        setLoading(false);
+
+        if (!omdbRes) setError('Oops, something went wrong.')
+
+        const combinedResults = await loadCachedMatches([omdbRes.data.data]);
+
+        setMedia(combinedResults.results[0]);
+
+        if (combinedResults.results[0].Type === 'series')
+        {
+            initialiseSeasons(parseInt(combinedResults.results[0].totalSeasons))
+        }
     }
 
     const confirmDeletion = async () =>
@@ -233,19 +272,20 @@ export default function EditItemScreen({ navigation, route })
 
                     <Mk_FormatSelector
                         initialFormats={initialFormats}
-                        onFormatsChange={updateFormats} />
+                        onFormatsChange={setSelectedFormats} />
 
-                    {barcode && media.Type === 'movie' &&
-                        <View style={styles.barcodeBtnsContainer}>
+
+                    <View style={styles.barcodeBtnsContainer}>
+                        {alternatives?.length > 1 &&
                             <Mk_Button style={styles.wrongMovieBtn}
-                                text={'Wrong movie?'}
+                                text={'Wrong result?'}
                                 icon={'magnify'}
                                 onPress={() =>
                                 {
-                                    setModalMessage("We got the wrong movie? Oops! Enter the correct title below and tap search.");
-                                    setShowSetTitleModal(true);
+                                    setShowAlternatives(true);
                                 }} />
-
+                        }
+                        {barcode &&
                             <Mk_Button style={styles.boxsetBtn}
                                 text={'Add as a boxset'}
                                 icon={'plus-box-multiple'}
@@ -258,14 +298,15 @@ export default function EditItemScreen({ navigation, route })
                                             'userRatings': {
                                                 [media.imdbID]: userRating
                                             },
-                                            'barcode': barcode
+                                            'barcode': barcode,
+                                            'mode': 'add'
                                         }
                                     )
-                                }
-                                }
+                                }}
                             />
-                        </View>
-                    }
+                        }
+                    </View>
+
 
                     {media.Type === 'series' &&
                         <Mk_Button style={styles.seasonsBtn}
@@ -324,13 +365,25 @@ export default function EditItemScreen({ navigation, route })
                 }}
             />
 
+            <Mk_ModalSearchResults
+                show={showAlternatives}
+                data={alternatives}
+                headerText={"Here's the other matches we found"}
+                subHeaderText={"Select the correct movie or show:"}
+                cancelButtonAction={() => setShowAlternatives(false)}
+                itemButtonAction={(item) =>
+                {
+                    setShowAlternatives(false);
+                    changeSelection(item);
+                }} />
+
             <Modal
                 visible={showSelectSeasonsModal}
                 animationType={'slide'}>
-                <View style={styles.seasonsModal}>
-                    <Text style={styles.seasonsModalTitle}>Select the seasons you own:</Text>
+                <View style={styles.modal}>
+                    <Text style={styles.modalTitle}>Select the seasons you own:</Text>
                     <FlatList
-                        style={styles.seasonsModalList}
+                        style={styles.modalList}
                         data={ownedSeasons}
                         keyExtractor={(season) => season.num}
                         extraData={rerenderList}
@@ -348,7 +401,7 @@ export default function EditItemScreen({ navigation, route })
                         )}
                     />
                     <Mk_Button
-                        style={styles.seasonsModalClose}
+                        style={styles.modalClose}
                         text={"Close"}
                         onPress={() => setShowSelectSeasonsModal(false)} />
                 </View>
@@ -386,28 +439,33 @@ const styles = StyleSheet.create({
         backgroundColor: colours.save,
         iconSize: 30
     },
-    seasonsModal: {
+    modal: {
         width: '100%',
         height: '100%',
-        padding: 20,
         alignContent: 'center',
         justifyContent: 'center'
     },
-    seasonsModalTitle: {
+    modalTitle: {
         textAlign: 'center',
         fontSize: 18,
-        fontWeight: 'bold'
+        fontWeight: 'bold',
+        marginVertical: 15,
     },
-    seasonsModalClose: {
-        marginTop: 15,
+    modalSubheader: {
+        textAlign: 'center',
+        marginBottom: 8,
     },
-    seasonsModalList: {
+    modalClose: {
+        marginVertical: 15,
+    },
+    modalList: {
         flex: 1,
         marginTop: 10,
         borderColor: colours.light_grey,
         borderTopWidth: 1,
         borderBottomWidth: 1,
-        paddingTop: 10
+        paddingTop: 10,
+        backgroundColor: colours.light
     },
     seasonsModalRow: {
         flexDirection: "row",
@@ -486,7 +544,7 @@ const styles = StyleSheet.create({
     seasonsBtn: {
         backgroundColor: colours.secondary,
         position: 'absolute',
-        bottom: 25
+        bottom: 60
     },
     sectionHeader: {
         width: '100%',

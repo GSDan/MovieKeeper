@@ -14,7 +14,7 @@ export default function Mk_FormatSelector({ initialFormats, onFormatsChange, sty
         let dvd, blu, uhd;
         dvd = blu = uhd = false;
 
-        initialFormats.forEach(format =>
+        initialFormats?.forEach(format =>
         {
             switch (format)
             {
@@ -44,21 +44,7 @@ export default function Mk_FormatSelector({ initialFormats, onFormatsChange, sty
         if (bluChecked) formats.push('Blu-ray');
         if (uhdChecked) formats.push('4K');
 
-        let changed = initialFormats.length !== formats.length;
-        if (!changed)
-        {
-            // this assumes they're in the same order, which they should be
-            for (let i = 0; i < formats.length; i++)
-            {
-                if (formats[i] !== initialFormats[i])
-                {
-                    changed = true;
-                    break;
-                }
-            }
-        }
-
-        if (changed) onFormatsChange(formats);
+        onFormatsChange(formats);
 
     }, [dvdChecked, bluChecked, uhdChecked])
 

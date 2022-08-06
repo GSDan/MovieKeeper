@@ -1,14 +1,15 @@
-import { StyleSheet, Text, View, ActivityIndicator, Alert, Image } from 'react-native'
+import { StyleSheet, Text, View, Image } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import { Picker } from '@react-native-picker/picker';
 
 import Screen from "../components/Mk_Screen";
 import colours from '../config/colours';
-import { getFromBarcode, getFromTitle } from '../api/libraryItems';
+import { getFromBarcode, getFromId } from '../api/libraryItems';
 import Mk_Button from '../components/Mk_Button';
-import { getString, setString } from '../config/storage';
+import { getData, getString, loadCachedMatches, setString } from '../config/storage';
 import Mk_TextSearch from '../components/Mk_TextSearch';
+import { useSearchTitle } from '../hooks/searchTitle';
 
 export default function AddItemScreen({ navigation })
 {
@@ -41,6 +42,7 @@ export default function AddItemScreen({ navigation })
     const [hasPermission, setHasPermission] = useState(null);
     const [scannerVisible, setScannerVisible] = useState(false);
     const [showRegionExplainer, setShowRegionExplainer] = useState(true);
+    const [searchTitle, resetResults, { imdbLoading, imdbError, imdbResults }] = useSearchTitle();
     const [selectedRegion, setSelectedRegion] = useState();
     const [titleInput, setTitleInput] = useState();
     const [loading, setLoading] = useState(false);
@@ -48,35 +50,60 @@ export default function AddItemScreen({ navigation })
 
     useEffect(() =>
     {
+        let isMounted = true;
+
         (async () =>
         {
             const storedRegion = await getString('ebayRegion');
-            if (storedRegion) 
+            if (storedRegion && isMounted) 
             {
                 setSelectedRegion(storedRegion);
                 setShowRegionExplainer(false);
             }
         })();
+
+        return () => { isMounted = false; }
     }, []);
+
+    useEffect(() =>
+    {
+        let isMounted = true;
+        (async () =>
+        {
+            if (imdbResults && imdbResults.length > 0)
+            {
+                setLoading(true);
+                let omdbRes = await getFromId(imdbResults[0].imdbID);
+                if (isMounted && omdbRes)
+                {
+                    setLoading(false);
+                    formatMovieData([omdbRes.data.data], imdbResults);
+                }
+            }
+        })();
+        return () => { isMounted = false; }
+    }, [imdbResults])
 
     const openScanner = () =>
     {
         // uncomment to fake barcode scan in simulator
-        //handleBarCodeScanned({ data: '704400103612' });
-
-        setScannerVisible(true);
-        if (showRegionExplainer)
-        {
-            setShowRegionExplainer(false);
-            Alert.alert(
-                'Please set your region',
-                'For the best results, please select the region in which you bought the disc before scanning it.',
-                [
-                    {
-                        text: 'Got it'
-                    }
-                ]);
-        }
+        handleBarCodeScanned({ data: '5055201814340' });
+        // alien 4k 5039036092432
+        // alien boxset 5039036050319
+        // akira 704400103612
+        // setScannerVisible(true);
+        // if (showRegionExplainer)
+        // {
+        //     setShowRegionExplainer(false);
+        //     Alert.alert(
+        //         'Please set your region',
+        //         'For the best results, please select the region in which you bought the disc before scanning it.',
+        //         [
+        //             {
+        //                 text: 'Got it'
+        //             }
+        //         ]);
+        // }
     }
 
     const checkPermsOpenScanner = async () =>
@@ -94,48 +121,59 @@ export default function AddItemScreen({ navigation })
         }
     };
 
-    const formatMovieData = (mediaResults, likelyFormat = null, barcode = null) =>
+    const formatMovieData = async (omdbResults, imdbResults = null, likelyFormat = null, barcode = null, previous = null) =>
     {
-        mediaResults.forEach(mediaRes =>
-        {
-            if (mediaRes.Ratings)
-            {
-                const rotten = mediaRes.Ratings.find(r => r.Source === 'Rotten Tomatoes');
-                if (rotten) mediaRes.ScoreRotten = rotten.Value;
-            }
-        });
+        if (!omdbResults && !previous) return;
 
-        if (mediaResults.length === 1)
+        const cacheResults = await loadCachedMatches(previous ?? omdbResults);
+        const combinedRes = cacheResults.results;
+
+        if (imdbResults)
         {
-            // TODO check if we have this media already in the library
-            navigation.navigate("Edit",
+            // remove anything which doesn't have a media type (e.g. actors) or year
+            imdbResults = imdbResults.filter(imdbItem => imdbItem.Type && imdbItem.Year)
+        }
+
+        if (combinedRes.length === 1)
+        {
+            if (combinedRes[0].Prior)
+            {
+                navigation.navigate("Edit",
+                    {
+                        'media': combinedRes[0],
+                        'alternatives': imdbResults,
+                        'mode': 'edit',
+                        'formats': combinedRes[0].Formats,
+                        'barcode': barcode
+                    }
+                )
+            }
+            else
+            {
+                navigation.navigate("Edit",
+                    {
+                        'media': combinedRes[0],
+                        'alternatives': imdbResults,
+                        'mode': 'add',
+                        'likelyFormat': likelyFormat,
+                        'barcode': barcode
+                    }
+                )
+            }
+        }
+        else
+        {
+            navigation.navigate("Boxset",
                 {
-                    'media': mediaResults[0],
-                    'mode': 'add',
+                    'media': combinedRes,
                     'likelyFormat': likelyFormat,
-                    'barcode': barcode
+                    'userRatings': cacheResults.ratings,
+                    'barcode': barcode,
+                    'mode': 'edit'
                 }
             )
         }
 
-    }
-
-    const searchOmdb = async (title) =>
-    {
-        if (!title) return setError('Please enter a movie title');
-
-        setLoading(true);
-        const resp = await getFromTitle(title);
-
-        if (!resp || !resp.data || !resp.data.success)
-        {
-            setLoading(false);
-            return setError(resp && resp.data ? "Couldn't find a movie with that title" : "Something went wrong")
-        }
-
-        setError(null);
-        formatMovieData([resp.data.data], null);
-        setLoading(false);
     }
 
     const handleBarCodeScanned = async ({ data: barcode }) =>
@@ -157,7 +195,7 @@ export default function AddItemScreen({ navigation })
             else if (!resp.data.success)
             {
                 setError(null);
-                navigation.navigate("Edit",
+                return navigation.navigate("Edit",
                     {
                         'media': {},
                         'mode': 'fail',
@@ -167,18 +205,19 @@ export default function AddItemScreen({ navigation })
             }
 
             setError(null);
-            formatMovieData(resp.data.data, resp.data.likelyFormat, barcode)
+            formatMovieData([resp.data.data], resp.data.imdb, resp.data.likelyFormat, barcode, resp.data.previous);
         }
         catch (error)
         {
             setLoading(false);
+            console.log(error)
             setError("Oops! Something went wrong. Please check your connection and try again.");
         }
 
     };
 
     return (
-        <Screen loading={loading}>
+        <Screen loading={loading || imdbLoading}>
 
             {/* SCANNING VIEW */}
             {scannerVisible &&
@@ -224,11 +263,11 @@ export default function AddItemScreen({ navigation })
 
                     <Image style={styles.logo} source={require("../assets/adaptive-icon.png")} />
 
-                    {error && <Text style={styles.error}>{error}</Text>}
+                    {error || imdbError && <Text style={styles.error}>{error ?? imdbError}</Text>}
 
                     <Mk_TextSearch
                         onChangeText={(text) => setTitleInput(text)}
-                        onPress={() => searchOmdb(titleInput)}
+                        onPress={() => titleInput ? searchTitle(titleInput) : setError('Please enter a movie title')}
                         placeholder={"Enter a movie or show's title..."} />
 
                     <Text style={{ color: colours.medium, width: '100%', textAlign: 'center', marginTop: 12, marginBottom: 12 }}>
@@ -247,8 +286,9 @@ export default function AddItemScreen({ navigation })
                     }
 
                 </View>
-
             }
+
+
         </Screen>
     )
 }
@@ -266,6 +306,30 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         marginBottom: 10,
         color: 'red'
+    },
+    header: {
+        textAlign: 'center',
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginVertical: 10
+    },
+    list: {
+        flex: 1,
+        marginTop: 10,
+        borderColor: colours.light_grey,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        paddingTop: 10,
+        backgroundColor: colours.light
+    },
+    listFooter: {
+        height: 100
+    },
+    modal: {
+        width: '100%',
+        height: '100%',
+        alignContent: 'center',
+        justifyContent: 'center'
     },
     permissionsWarning: {
         width: '100%',

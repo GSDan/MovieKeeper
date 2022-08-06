@@ -1,10 +1,10 @@
 import { StyleSheet, ActivityIndicator, View, Modal, Text } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
-import { getFromTitle } from '../api/libraryItems';
 import colours from '../config/colours';
 import Mk_TextSearch from './Mk_TextSearch';
 import Mk_Button from './Mk_Button';
+import { useSearchTitle } from '../hooks/searchTitle';
 
 const Mk_ModalSearch = ({
     onResult,
@@ -20,33 +20,15 @@ const Mk_ModalSearch = ({
     const [searchError, setSearchError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState("");
+    const [searchTitle, resetResults, { imdbLoading, imdbError, imdbResults }] = useSearchTitle();
 
-    const searchOmdb = async (title) =>
+    useEffect(() =>
     {
-        if (!title) return setSearchError('Please enter a movie title');
-
-        setLoading(true);
-        const resp = await getFromTitle(title);
-
-        if (!resp || !resp.data || !resp.data.success)
+        if (imdbResults && imdbResults.length > 0)
         {
-            setLoading(false);
-            return setSearchError(resp && resp.data ? "Couldn't find a movie with that title" : "Something went wrong")
+            onResult(imdbResults);
         }
-
-        setSearchError(null);
-        let data = resp.data.data;
-
-        if (data.Ratings)
-        {
-            const rotten = data.Ratings.find(r => r.Source === 'Rotten Tomatoes');
-            if (rotten) data.ScoreRotten = rotten.Value;
-        }
-
-        setLoading(false);
-        onResult(data);
-    }
-
+    }, [imdbResults])
 
     return (
         <Modal
@@ -54,8 +36,8 @@ const Mk_ModalSearch = ({
             animationType={'slide'}
             style={style}>
 
-            {loading &&
-                <ActivityIndicator animating={loading} style={styles.loadingIndicator} size="large" />
+            {loading || imdbLoading &&
+                <ActivityIndicator animating={true} style={styles.loadingIndicator} size="large" />
             }
 
             {!loading &&
@@ -63,15 +45,15 @@ const Mk_ModalSearch = ({
                     <Text style={styles.titleModalheader}>{headerText}</Text>
                     <Text style={styles.titleModalText}>{subHeaderText}</Text>
 
-                    {searchError &&
+                    {searchError || imdbError &&
                         <Text style={styles.error}>
-                            {searchError}
+                            {searchError ?? imdbError}
                         </Text>
                     }
 
                     <Mk_TextSearch
                         onChangeText={(text) => setSearchText(text)}
-                        onPress={() => searchOmdb(searchText)}
+                        onPress={() => searchText ? searchTitle(searchText) : setSearchError('Please enter a movie title')}
                         placeholder={"Enter a movie or show's title..."} />
 
                     {secondaryButtonAction &&

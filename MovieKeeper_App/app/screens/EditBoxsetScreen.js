@@ -1,5 +1,5 @@
 import { StyleSheet, Text, FlatList } from 'react-native'
-import React, { useState, useContext, useLayoutEffect } from 'react'
+import React, { useState, useContext, useLayoutEffect, useEffect } from 'react'
 import Toast from 'react-native-root-toast';
 
 import Screen from "../components/Mk_Screen";
@@ -9,20 +9,26 @@ import Mk_CardWithAction from '../components/Mk_CardWithAction';
 import colours from '../config/colours';
 import Mk_FormatSelector from '../components/Mk_FormatSelector';
 import { AuthContext } from '../hooks/userAuthentication';
-import { addBoxetToLibrary } from '../api/libraryItems';
+import { addBoxetToLibrary, getFromId } from '../api/libraryItems';
+import Mk_ModalSearchResults from '../components/Mk_ModalSearchResults';
 
 export default function EditBoxsetScreen({ navigation, route })
 {
+    const barcode = route.params.barcode;
+    const mode = route.params.mode;
+
     const [media, setMedia] = useState([]);
     const [userRatings, setUserRatings] = useState({});
     const [initialFormats, setInitialFormats] = useState([]);
     const [selectedFormats, setSelectedFormats] = useState([]);
+    const [formatsChanged, setFormatsChanged] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
+    const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [rerenderList, setRerenderList] = useState(true)
+    const [changed, setChanged] = useState(mode !== 'edit');
+    const [saveAndClose, setSaveAndClose] = useState(false);
     const authContext = useContext(AuthContext);
-
-    const barcode = route.params.barcode;
 
     useLayoutEffect(() =>
     {
@@ -32,7 +38,8 @@ export default function EditBoxsetScreen({ navigation, route })
         }
         if (route.params.likelyFormat)
         {
-            setInitialFormats(route.params.likelyFormat);
+            setInitialFormats([route.params.likelyFormat]);
+            setSelectedFormats([route.params.likelyFormat]);
         }
         if (route.params.userRatings)
         {
@@ -41,61 +48,106 @@ export default function EditBoxsetScreen({ navigation, route })
         setRerenderList(!rerenderList);
     }, []);
 
-    const addMedia = (newMedia) =>
+    const addMedia = async (newMedia) =>
     {
-        const currentMedia = media;
-        currentMedia.push(newMedia);
-        setMedia(currentMedia);
-        setRerenderList(!rerenderList);
+        try
+        {
+            setLoading(true);
+            let omdbRes = await getFromId(newMedia.imdbID);
+            setLoading(false);
+            const currentMedia = media;
+            currentMedia.push(omdbRes.data.data);
+            setMedia(currentMedia);
+            updateRating(newMedia.imdbID, 0);
+        }
+        catch (error)
+        {
+            console.log(error)
+        }
     }
 
     const removeMedia = (toRemove) =>
     {
-        setMedia(media.filter(item => item.imdbID !== toRemove.imdbID))
+        setMedia(media.filter(item => item.imdbID !== toRemove.imdbID));
+        setChanged(true);
     }
 
     const updateRating = (id, rating) => 
     {
         let ratingsDict = userRatings;
         ratingsDict[id] = rating;
+        console.log(ratingsDict)
         setUserRatings(ratingsDict);
+        setChanged(true);
         setRerenderList(!rerenderList);
     }
 
-    const saveToDb = async () =>
+    // check if formats have changed
+    useEffect(() =>
     {
-        setLoading(true)
-
-        let movies = media;
-
-        movies.forEach(mov =>
+        let formatsChanged = initialFormats.length !== selectedFormats.length;
+        if (!formatsChanged)
         {
-            if (userRatings[mov.imdbID])
+            // this assumes they're in the same order, which they should be
+            for (let i = 0; i < selectedFormats.length; i++)
             {
-                mov.UserRating = userRatings[mov.imdbID];
+                if (selectedFormats[i] !== initialFormats[i])
+                {
+                    formatsChanged = true;
+                    break;
+                }
             }
-        });
-
-        try
-        {
-            await addBoxetToLibrary(barcode, movies, selectedFormats);
         }
-        catch (error)
+        setFormatsChanged(formatsChanged);
+    }, [selectedFormats])
+
+    // save and close
+    useEffect(() => 
+    {
+        let isMounted = true;
+
+        (async () =>
         {
+            if (!saveAndClose || !isMounted) return;
+            if (!changed && !formatsChanged) return navigation.popToTop();
+
+            setLoading(true)
+
+            let movies = media;
+
+            movies.forEach(mov =>
+            {
+                if (userRatings[mov.imdbID])
+                {
+                    mov.UserRating = userRatings[mov.imdbID];
+                }
+            });
+
+            try
+            {
+                await addBoxetToLibrary(barcode, movies, selectedFormats);
+            }
+            catch (error)
+            {
+                if (isMounted) setLoading(false);
+                console.log(error)
+                return;
+            }
+
+            if (!isMounted) return;
+
             setLoading(false);
-            console.log(error)
-            return;
-        }
+            authContext.setShouldRefreshContent(true);
 
-        setLoading(false);
-        authContext.setShouldRefreshContent(true);
+            Toast.show(mode === 'add' ? 'Added boxset' : 'Updated boxset', {
+                duration: Toast.durations.LONG,
+            });
 
-        Toast.show('Added boxset', {
-            duration: Toast.durations.LONG,
-        });
+            navigation.popToTop();
+        })();
 
-        navigation.popToTop();
-    }
+        return () => { isMounted = false; }
+    }, [saveAndClose])
 
     return (
         <Screen style={styles.boxsetContainer} loading={loading}>
@@ -105,7 +157,10 @@ export default function EditBoxsetScreen({ navigation, route })
             <Text style={styles.formatSubheader}>This boxset's format(s):</Text>
             <Mk_FormatSelector
                 initialFormats={initialFormats}
-                onFormatsChange={setSelectedFormats} />
+                onFormatsChange={(formats) =>
+                {
+                    setSelectedFormats(formats);
+                }} />
 
             <FlatList
                 style={styles.list}
@@ -136,10 +191,12 @@ export default function EditBoxsetScreen({ navigation, route })
             />
 
             <Mk_Button style={media.length < 2 ? styles.finishBtnLocked : styles.finishBtn}
-                text={media.length < 2 ? 'Add at least 2 movies' : 'Finish'}
-                icon={media.length < 2 ? 'upload-lock' : 'upload'}
+                text={media.length < 2 ? 'Add at least 2 movies' :
+                    mode === 'add' ? 'Finish' : 'Save changes'}
+                icon={media.length < 2 ? 'upload-lock' :
+                    mode === 'add' ? 'upload' : 'content-save'}
                 disabled={media.length < 2}
-                onPress={() => saveToDb()} />
+                onPress={() => setSaveAndClose(true)} />
 
             <Mk_ModalSearch
                 show={showSearchModal}
@@ -148,11 +205,23 @@ export default function EditBoxsetScreen({ navigation, route })
                 onResult={(res) =>
                 {
                     setShowSearchModal(false);
-                    addMedia(res);
+                    setSearchResults(res);
                 }}
                 cancelButtonString={'Cancel'}
                 cancelButtonAction={() => setShowSearchModal(false)}
             />
+
+            <Mk_ModalSearchResults
+                show={searchResults.length > 0}
+                data={searchResults}
+                headerText={"Here's what we found"}
+                subHeaderText={"Select the correct movie or show:"}
+                cancelButtonAction={() => setSearchResults([])}
+                itemButtonAction={(item) =>
+                {
+                    setSearchResults([]);
+                    addMedia(item);
+                }} />
         </Screen>
     )
 }

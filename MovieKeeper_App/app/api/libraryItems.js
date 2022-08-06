@@ -15,6 +15,12 @@ export const getFromTitle = async (title) =>
     return await getMovieFromTitle({ title });
 };
 
+export const getFromId = async (id) =>
+{
+    const getMovieFromId = httpsCallable(functions, 'getMovieFromImdbId');
+    return await getMovieFromId({ id });
+};
+
 export const getLibrary = async () =>
 {
     const getLibrary = httpsCallable(functions, 'getLibrary');
