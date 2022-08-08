@@ -154,15 +154,14 @@ const getMovieFromEbayListings = async function (ebayItems)
   if (ebayItems.length > 1)
   {
     // try to get a common sequence of words between the first 2 results
-    let commonWords = "";
+    let commonWords = [];
     const wordsInFirstRes = ebayItems[0].title.split(" ");
     const wordsInSecondRes = ebayItems[1].title.split(" ");
 
     for (let i = 0; i < wordsInFirstRes.length; i++)
     {
-      // skip blanks and instances of 'the' 
-      // 'The' can sometimes be out of order (e.g. 'Avengers, The') causing mismatches
-      if (wordsInFirstRes[i] === "" || wordsInFirstRes[i].toLowerCase() == "the") continue;
+      // skip blanks
+      if (wordsInFirstRes[i] === "") continue;
 
       for (let j = 0; j < wordsInSecondRes.length; j++)
       {
@@ -171,7 +170,7 @@ const getMovieFromEbayListings = async function (ebayItems)
         const rhs = wordsInFirstRes[j].toLowerCase().replace(/,/g, '');
         if (lhs == rhs)
         {
-          commonWords = `${commonWords} ${lhs}`;
+          commonWords.push(lhs);
           break;
         }
       }
@@ -179,7 +178,31 @@ const getMovieFromEbayListings = async function (ebayItems)
 
     if (commonWords.length > 0)
     {
+      if (ebayItems.length > 2)
+      {
+        let inAll = [];
+
+        // narrow it down against a third result if we have one
+        const wordsInThirdRes = ebayItems[2].title.split(" ");
+
+        for (let i = 0; i < commonWords.length; i++)
+          for (let j = 0; j < wordsInThirdRes.length; j++)
+          {
+            const rhs = wordsInThirdRes[j].toLowerCase().replace(/,/g, '');
+            if (commonWords[i] == rhs)
+            {
+              inAll.push(rhs)
+              break;
+            }
+          }
+
+        if (inAll.length > 0) commonWords = inAll;
+      }
+
+      commonWords = commonWords.join(" ");
+      console.log('common words', commonWords)
       let processedRes = processListingTitle(commonWords, likelyFormat)
+      console.log('processed words', processedRes)
       likelyFormat = processedRes.likelyFormat;
 
       let result = await attemptFromTitle(processedRes.title)
@@ -188,7 +211,6 @@ const getMovieFromEbayListings = async function (ebayItems)
         result.likelyFormat = likelyFormat;
         return result;
       }
-
     }
   }
 
