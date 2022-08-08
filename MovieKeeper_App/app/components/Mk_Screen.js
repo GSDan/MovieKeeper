@@ -1,5 +1,5 @@
 import { StyleSheet, View, SafeAreaView, ActivityIndicator } from 'react-native'
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useState } from 'react'
 import Constants from "expo-constants";
 
 import colours from '../config/colours';

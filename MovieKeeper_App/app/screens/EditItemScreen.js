@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, Image, Alert, Modal, FlatList, useWindowDimensions } from 'react-native'
-import React, { useState, useContext, useLayoutEffect, useEffect } from 'react'
+import React, { useState, useLayoutEffect, useEffect } from 'react'
 import Toast from 'react-native-root-toast';
 
 import Screen from "../components/Mk_Screen";
@@ -9,12 +9,11 @@ import Stars from "../components/Mk_Stars";
 import Mk_RoundButton from '../components/Mk_RoundButton';
 import Mk_RottenScore from '../components/Mk_RottenScore';
 import Mk_ImdbScore from '../components/Mk_ImdbScore';
-import { AuthContext } from '../hooks/userAuthentication';
 import Mk_ModalSearch from '../components/Mk_ModalSearch';
 import Mk_FormatSelector from '../components/Mk_FormatSelector';
 import Mk_Button from '../components/Mk_Button';
 import Checkbox from 'expo-checkbox';
-import { loadCachedMatches } from '../config/storage';
+import { loadCachedMatches, setString } from '../config/storage';
 import Mk_ModalSearchResults from '../components/Mk_ModalSearchResults';
 
 export default function EditItemScreen({ navigation, route })
@@ -37,7 +36,6 @@ export default function EditItemScreen({ navigation, route })
     const [alternatives, setAlternatives] = useState([]);
     const [showAlternatives, setShowAlternatives] = useState(false);
     const [error, setError] = useState(null);
-    const authContext = useContext(AuthContext);
 
     const barcode = route.params.barcode;
     const existingFormats = route.params.formats;
@@ -157,7 +155,7 @@ export default function EditItemScreen({ navigation, route })
         }
 
         setLoading(false);
-        authContext.setShouldRefreshContent(true);
+        setString('fetch', 'do it');
 
         Toast.show((mode === 'edit' ? 'Updated ' : 'Added ') + media.Title, {
             duration: Toast.durations.LONG,
@@ -229,7 +227,7 @@ export default function EditItemScreen({ navigation, route })
                         {
                             setLoading(true);
                             await deleteFromLibrary(media.Type, media.imdbID)
-                            authContext.setShouldRefreshContent(true);
+                            setString('fetch', 'do it');
                             Toast.show('Deleted ' + media.Title, {
                                 duration: Toast.durations.LONG,
                             });

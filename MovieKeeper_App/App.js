@@ -21,7 +21,6 @@ export default function App()
 {
   const [initializing, setInitializing] = useState(true);
   const [handleAuthChange, { currentUser }] = useAuthChange();
-  const [shouldRefreshContent, setShouldRefreshContent] = useState(true);
 
   const dimensions = useWindowDimensions();
   const allowedOrientation = Math.min(dimensions.width, dimensions.height) > 600 ? 'all' : 'portrait';
@@ -147,9 +146,7 @@ export default function App()
 
   return (
     <AuthContext.Provider value={{
-      currentUser,
-      shouldRefreshContent,
-      setShouldRefreshContent
+      currentUser
     }}>
       <RootSiblingParent>
         <NavigationContainer theme={navigationTheme}>

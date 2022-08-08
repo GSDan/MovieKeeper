@@ -1,5 +1,5 @@
 import { StyleSheet, FlatList, Text, RefreshControl, View, TouchableOpacity, Modal, useWindowDimensions } from 'react-native'
-import React, { useState, useContext, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,10 +8,9 @@ import Screen from "../components/Mk_Screen";
 import Card from "../components/Mk_Card";
 import colours from "../config/colours";
 import { getLibrary } from '../api/libraryItems';
-import { AuthContext } from '../hooks/userAuthentication';
 import Mk_Button from '../components/Mk_Button';
 import Mk_RoundButton from '../components/Mk_RoundButton';
-import { setString, getString, getData, setData } from '../config/storage';
+import { setString, setData, getString, removeItem } from '../config/storage';
 
 const sortFields = [
     {
@@ -46,7 +45,6 @@ const sortFields = [
 
 export default function LibraryScreen({ navigation })
 {
-    const [shouldRefresh, setShouldRefresh] = useState(false)
     const [refreshing, setRefreshing] = useState(false);
     const [libraryData, setLibraryData] = useState([]);
     const [firstScan, setFirstScan] = useState(true)
@@ -59,41 +57,14 @@ export default function LibraryScreen({ navigation })
     const [filterOptions, setFilterOptions] = useState(null);
     const [rerenderList, setRerenderList] = useState(true)
     const [showSortFilterModal, setShowSortFilterModal] = useState(false);
-    const authContext = useContext(AuthContext);
 
     useEffect(() =>
     {
-        var isMounted = true;
-
-        async function loadConf()
+        if (!refreshing)
         {
-            let storedLibrary;
-            let previousSortBy;
-            let previousSortAsc;
-            let anyPrevious;
-
-            await Promise.all([
-                getData('library').then(data => storedLibrary = data),
-                getString('first').then(data => anyPrevious = data),
-                getString('sortBy').then(data => previousSortBy = data),
-                getString('sortAsc').then(data => previousSortAsc = data)
-            ])
-
-            if (!isMounted) return;
-
-            if (storedLibrary) setLibraryData(storedLibrary);
-
-            if (anyPrevious) setFirstScan(false);
-
-            if (previousSortBy)
-            {
-                setSortBy(previousSortBy);
-                setSortAsc(JSON.parse(previousSortAsc));
-            }
+            fetch();
         }
-        loadConf();
-        return () => { isMounted = false; }
-    }, [])
+    }, [fetch])
 
     useEffect(() =>
     {
@@ -194,39 +165,26 @@ export default function LibraryScreen({ navigation })
     useFocusEffect(
         React.useCallback(() =>
         {
-            console.log('focus')
-            if (authContext.shouldRefreshContent && !refreshing)
+            getString('fetch').then(val =>
             {
-                setShouldRefresh(true);
-            }
-        }, [authContext.shouldRefreshContent, refreshing])
+                if (val) fetch();
+            })
+
+        }, [fetch])
     );
 
-    useEffect(() =>
+    const fetch = useCallback(async () =>
     {
-        var isMounted = true;
-        async function fetchData()
+        removeItem('fetch');
+        setRefreshing(true);
+        const result = await getLibrary();
+        if (result.data)
         {
-            if (!isMounted || !shouldRefresh) return;
-
-            setRefreshing(true);
-
-            const result = await getLibrary();
-
-            if (!isMounted) return;
-
-            if (result.data)
-            {
-                setLibraryData(result.data);
-                setData('library', result.data);
-            }
-
-            authContext.setShouldRefreshContent(false);
-            setRefreshing(false);
+            setLibraryData(result.data);
+            setData('library', result.data);
         }
-        fetchData();
-        return () => { isMounted = false; }
-    }, [shouldRefresh])
+        setRefreshing(false);
+    }, [])
 
     // https://stackoverflow.com/a/34347138/1377099
     function removeArticles(str)
@@ -313,7 +271,7 @@ export default function LibraryScreen({ navigation })
 
                 }
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={() => setShouldRefresh(true)} />
+                    <RefreshControl refreshing={refreshing} onRefresh={() => fetch()} />
                 }
             />
 

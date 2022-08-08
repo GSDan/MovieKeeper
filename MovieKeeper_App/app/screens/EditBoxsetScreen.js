@@ -1,5 +1,5 @@
 import { StyleSheet, Text, FlatList } from 'react-native'
-import React, { useState, useContext, useLayoutEffect, useEffect } from 'react'
+import React, { useState, useLayoutEffect, useEffect } from 'react'
 import Toast from 'react-native-root-toast';
 
 import Screen from "../components/Mk_Screen";
@@ -8,9 +8,9 @@ import Mk_ModalSearch from '../components/Mk_ModalSearch';
 import Mk_CardWithAction from '../components/Mk_CardWithAction';
 import colours from '../config/colours';
 import Mk_FormatSelector from '../components/Mk_FormatSelector';
-import { AuthContext } from '../hooks/userAuthentication';
 import { addBoxetToLibrary, getFromId } from '../api/libraryItems';
 import Mk_ModalSearchResults from '../components/Mk_ModalSearchResults';
+import { setString } from '../config/storage';
 
 export default function EditBoxsetScreen({ navigation, route })
 {
@@ -28,7 +28,6 @@ export default function EditBoxsetScreen({ navigation, route })
     const [rerenderList, setRerenderList] = useState(true)
     const [changed, setChanged] = useState(mode !== 'edit');
     const [saveAndClose, setSaveAndClose] = useState(false);
-    const authContext = useContext(AuthContext);
 
     useLayoutEffect(() =>
     {
@@ -137,7 +136,7 @@ export default function EditBoxsetScreen({ navigation, route })
             if (!isMounted) return;
 
             setLoading(false);
-            authContext.setShouldRefreshContent(true);
+            setString('fetch', 'do it');
 
             Toast.show(mode === 'add' ? 'Added boxset' : 'Updated boxset', {
                 duration: Toast.durations.LONG,

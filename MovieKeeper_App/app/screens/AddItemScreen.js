@@ -87,23 +87,23 @@ export default function AddItemScreen({ navigation })
     const openScanner = () =>
     {
         // uncomment to fake barcode scan in simulator
-        handleBarCodeScanned({ data: '5055201814340' });
+        //handleBarCodeScanned({ data: '5055201814340' });
         // alien 4k 5039036092432
         // alien boxset 5039036050319
         // akira 704400103612
-        // setScannerVisible(true);
-        // if (showRegionExplainer)
-        // {
-        //     setShowRegionExplainer(false);
-        //     Alert.alert(
-        //         'Please set your region',
-        //         'For the best results, please select the region in which you bought the disc before scanning it.',
-        //         [
-        //             {
-        //                 text: 'Got it'
-        //             }
-        //         ]);
-        // }
+        setScannerVisible(true);
+        if (showRegionExplainer)
+        {
+            setShowRegionExplainer(false);
+            Alert.alert(
+                'Please set your region',
+                'For the best results, please select the region in which you bought the disc before scanning it.',
+                [
+                    {
+                        text: 'Got it'
+                    }
+                ]);
+        }
     }
 
     const checkPermsOpenScanner = async () =>

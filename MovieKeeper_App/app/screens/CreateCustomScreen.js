@@ -1,6 +1,6 @@
 import { StyleSheet, Switch, Text, View, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import React, { useContext, useState } from 'react'
+import React, { useState } from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Formik } from 'formik'
 import * as Yup from 'yup'
@@ -12,7 +12,7 @@ import Mk_Button from '../components/Mk_Button';
 import Mk_FormatSelector from '../components/Mk_FormatSelector';
 import Stars from "../components/Mk_Stars";
 import { addCustomToLibrary } from '../api/libraryItems';
-import { AuthContext } from '../hooks/userAuthentication';
+import { setString } from '../config/storage';
 
 const validationSchema = (isTV) => Yup.object().shape({
     Title: Yup.string().required().label('Title'),
@@ -33,7 +33,6 @@ const CreateCustomScreen = () =>
     const [userRating, setUserRating] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const authContext = useContext(AuthContext);
 
     const createItem = async (formVals) =>
     {
@@ -59,7 +58,7 @@ const CreateCustomScreen = () =>
             return console.log(error)
         }
 
-        authContext.setShouldRefreshContent(true);
+        setString('fetch', 'do it');
 
         Toast.show((mode === 'edit' ? 'Updated ' : 'Added ') + media.Title, {
             duration: Toast.durations.LONG,
