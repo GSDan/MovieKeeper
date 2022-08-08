@@ -15,6 +15,7 @@ import LoginScreen from './app/screens/LoginScreen';
 import { useAuthChange, AuthContext } from './app/hooks/userAuthentication';
 import Mk_Screen from './app/components/Mk_Screen';
 import EditBoxsetScreen from './app/screens/EditBoxsetScreen';
+import CreateCustomScreen from './app/screens/CreateCustomScreen';
 
 export default function App()
 {
@@ -50,6 +51,15 @@ export default function App()
       <AddStack.Screen
         name="Boxset"
         component={EditBoxsetScreen}
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+          animation: 'slide_from_bottom'
+        }}
+      />
+      <AddStack.Screen
+        name="Custom"
+        component={CreateCustomScreen}
         options={{
           headerShown: false,
           presentation: 'modal',

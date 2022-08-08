@@ -14,7 +14,6 @@ import Mk_ModalSearch from '../components/Mk_ModalSearch';
 import Mk_FormatSelector from '../components/Mk_FormatSelector';
 import Mk_Button from '../components/Mk_Button';
 import Checkbox from 'expo-checkbox';
-import Mk_CardWithAction from '../components/Mk_CardWithAction';
 import { loadCachedMatches } from '../config/storage';
 import Mk_ModalSearchResults from '../components/Mk_ModalSearchResults';
 
@@ -185,6 +184,32 @@ export default function EditItemScreen({ navigation, route })
         }
     }
 
+    const getMinorDetails = () =>
+    {
+        let toRet = "";
+
+        if (media.imdbID && media.imdbID.startsWith("custom"))
+        {
+            toRet += 'Custom';
+        }
+
+        let fields = ['Rated', 'Year', 'Runtime'];
+
+        fields.forEach(field =>
+        {
+            if (media[field])
+            {
+                if (toRet.length > 0)
+                {
+                    toRet += " | ";
+                }
+                toRet += media[field]
+            }
+        })
+
+        return toRet;
+    }
+
     const confirmDeletion = async () =>
     {
         Alert.alert(
@@ -227,35 +252,50 @@ export default function EditItemScreen({ navigation, route })
             {error && <Text>{error}</Text>}
 
             <View style={landscape ? styles.landscapeContainer : styles.portraitContainer}>
-                <Image style={landscape ? styles.movieImageLandscape : styles.movieImagePortrait}
-                    source={{ uri: media.Poster }}
-                    resizeMode={landscape ? 'contain' : 'cover'} />
+
+                {media.Poster ?
+                    <Image style={landscape ? styles.movieImageLandscape : styles.movieImagePortrait}
+                        source={{ uri: media.Poster }}
+                        resizeMode={landscape ? 'contain' : 'cover'} />
+                    :
+                    <Image style={landscape ? styles.movieImageLandscapeLogo : styles.movieImagePortraitLogo}
+                        source={require("../assets/adaptive-icon.png")}
+                        resizeMode={'center'} />
+                }
+
+
                 <View style={landscape ? styles.landscapeDetailsContainer : styles.portraitDetailsContainer}>
                     <Text
                         numberOfLines={2}
                         style={styles.movieTitle}>
                         {media.Title}
                     </Text>
-                    <Text style={styles.movieDetails} numberOfLines={2}>
-                        {media.Actors}
-                    </Text>
-                    {media.Director !== "N/A" &&
+                    {media.Actors ?
+                        <Text style={styles.movieDetails} numberOfLines={2}>
+                            {media.Actors}
+                        </Text> : null
+                    }
+
+                    {media.Director && media.Director !== "N/A" ?
                         <Text style={styles.movieDetails} numberOfLines={2}>
                             Directed by {media.Director}
-                        </Text>
+                        </Text> : null
                     }
                     <View style={styles.movieDetailsRow}>
                         <Text style={styles.minorDetails}>
-                            {media.Rated} | {media.Year} | {media.Runtime}
+                            {getMinorDetails()}
                         </Text>
 
-                        <View style={styles.movieRatingsContainer}>
-                            {media.ScoreRotten && <Mk_RottenScore score={media.ScoreRotten} />}
-                            {media.imdbRating &&
-                                <Mk_ImdbScore
-                                    score={media.imdbRating}
-                                    style={{ marginLeft: media.ScoreRotten ? 8 : 0 }} />}
-                        </View>
+                        {media.ScoreRotten || media.imdbRating ?
+                            <View style={styles.movieRatingsContainer}>
+                                {media.ScoreRotten && <Mk_RottenScore score={media.ScoreRotten} />}
+                                {media.imdbRating &&
+                                    <Mk_ImdbScore
+                                        score={media.imdbRating}
+                                        style={{ marginLeft: media.ScoreRotten ? 8 : 0 }} />}
+                            </View> : null
+                        }
+
                     </View>
 
 
@@ -501,6 +541,15 @@ const styles = StyleSheet.create({
         height: '37%',
     },
     movieImageLandscape: {
+        height: '100%',
+        width: '50%',
+        backgroundColor: colours.dark
+    },
+    movieImagePortraitLogo: {
+        width: '100%',
+        height: '37%',
+    },
+    movieImageLandscapeLogo: {
         height: '100%',
         width: '50%',
         backgroundColor: colours.dark

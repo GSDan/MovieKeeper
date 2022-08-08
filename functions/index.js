@@ -533,6 +533,48 @@ exports.addBoxsetToLibrary = functions.https.onCall(async (data, context) =>
   return await Promise.all(promises);
 });
 
+exports.addCustomToLibrary = functions.https.onCall(async (data, context) =>
+{
+  if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
+  const id = `custom_${context.auth.uid}_${Date.now()}`;
+
+  const mediaType = data.Type === 'movie' ? 'Movies' : 'TV';
+  const mediaRef = db.collection(mediaType).doc(id);
+
+  let newData = {
+    'Actors': data.Actors,
+    'Director': data.Director,
+    'Genre': data.Genre,
+    'Title': data.Title,
+    'Type': data.Type,
+    'Year': data.Year,
+    'imdbID': id
+  }
+
+  let userData = {
+    'UserRating': data.UserRating,
+    'Added': Date.now(),
+    'Formats': data.OwnedFormats
+  };
+
+  if (data.totalSeasons)
+  {
+    newData.totalSeasons = data.totalSeasons;
+    // if a user adds a custom TV show, just assume they own all of it
+    // they can fix that themselves later if they want
+    userData.OwnedSeasons = [];
+    for (let i = 1; i <= newData.totalSeasons; i++)
+    {
+      userData.OwnedSeasons.push({ 'num': i, 'owned': true })
+    }
+  }
+
+  await mediaRef.set(newData);
+
+  const libraryRef = db.collection('Users').doc(context.auth.uid).collection(mediaType).doc(id);
+  return libraryRef.set(userData);
+})
+
 exports.addMovieToLibrary = functions.https.onCall(async (data, context) =>
 {
   if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");

@@ -11,13 +11,18 @@ export default function Mk_Card({ movie, onPress, style })
     return (
         <TouchableOpacity onPress={onPress} style={style}>
             <View style={styles.card}>
-                <Image style={styles.image} source={{ uri: movie.Poster }} />
+                {movie.Poster && <Image style={styles.image} source={{ uri: movie.Poster }} />}
+                {!movie.Poster && <Image style={styles.image} source={require("../assets/adaptive-icon.png")} />}
                 <View style={styles.detailsContainer}>
                     <Text style={styles.title} numberOfLines={2}>
                         {movie.Title}
                     </Text>
                     <Text style={styles.subTitle} numberOfLines={2}>
-                        {movie.Rated} | {movie.Year} | {movie.Runtime} | {(movie.Formats.join(', '))}
+                        {movie.imdbID.startsWith("custom") && "Custom | "}
+                        {movie.Rated && movie.Rated + " | "}
+                        {movie.Year && movie.Year + " | "}
+                        {movie.Runtime && movie.Runtime + " | "}
+                        {(movie.Formats.join(', '))}
                     </Text>
                     <Stars
                         value={movie.UserRating}
@@ -25,7 +30,7 @@ export default function Mk_Card({ movie, onPress, style })
                         containerStyle={{ marginTop: 8 }} />
                     <View style={styles.ratingsContainer}>
                         {movie.ScoreRotten && <Mk_RottenScore score={movie.ScoreRotten} />}
-                        <Mk_ImdbScore score={movie.imdbRating} style={{ marginLeft: movie.ScoreRotten ? 8 : 0 }} />
+                        {movie.imdbRating && <Mk_ImdbScore score={movie.imdbRating} style={{ marginLeft: movie.ScoreRotten ? 8 : 0 }} />}
                     </View>
 
                 </View>

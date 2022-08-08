@@ -43,6 +43,22 @@ export const addSingleToLibrary = async (movieData, userRating, ownedFormats) =>
     }
 };
 
+export const addCustomToLibrary = async (customData, userRating, ownedFormats) =>
+{
+    try
+    {
+        const addCustomToLibrary = httpsCallable(functions, 'addCustomToLibrary');
+        return await addCustomToLibrary({
+            ...customData,
+            'UserRating': userRating,
+            'OwnedFormats': ownedFormats
+        });
+    } catch (error)
+    {
+        console.log(error)
+    }
+};
+
 export const addBoxetToLibrary = async (barcode, mediaItems, ownedFormats) =>
 {
     try

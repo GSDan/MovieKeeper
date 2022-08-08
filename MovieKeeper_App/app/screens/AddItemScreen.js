@@ -285,10 +285,13 @@ export default function AddItemScreen({ navigation })
                         </Text>
                     }
 
+                    <Mk_Button
+                        style={styles.manualEntryBtn}
+                        text={'Create Custom'}
+                        icon={'format-list-bulleted'}
+                        onPress={() => navigation.navigate("Custom")} />
                 </View>
             }
-
-
         </Screen>
     )
 }
@@ -324,6 +327,11 @@ const styles = StyleSheet.create({
     },
     listFooter: {
         height: 100
+    },
+    manualEntryBtn: {
+        position: 'absolute',
+        bottom: 20,
+        backgroundColor: colours.secondary
     },
     modal: {
         width: '100%',
