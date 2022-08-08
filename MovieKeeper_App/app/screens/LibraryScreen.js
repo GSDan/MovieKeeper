@@ -223,14 +223,20 @@ export default function LibraryScreen({ navigation })
                 )}
                 contentContainerStyle={{ flexGrow: 1 }}
                 ListEmptyComponent={<View style={styles.listEmptyContainer}>
-                    <Text>Nothing to see here.</Text>
-                    <Text>...yet.</Text>
 
-                    {firstScan &&
-                        <Text style={{ marginTop: 40 }}>
-                            Tap 'Add' below to get started!
-                        </Text>
+                    {refreshing ? <Text>Loading...</Text> :
+                        <View>
+                            <Text>Nothing to see here.</Text>
+                            <Text>...yet.</Text>
+
+                            {firstScan &&
+                                <Text style={{ marginTop: 40 }}>
+                                    Tap 'Add' below to get started!
+                                </Text>
+                            }
+                        </View>
                     }
+
                 </View>}
                 ListHeaderComponent={<View style={{ flexDirection: "row", marginVertical: 15, width: '70%', alignItems: 'center', alignSelf: 'center' }}>
 
