@@ -12,22 +12,28 @@ export default function Mk_FormItem({
     errors,
     icon,
     keyboardType = 'default',
+    secureTextEntry = false,
     onBlur,
     handleChange })
 {
     return (
         <>
             <View style={styles.fieldContainer}>
+
                 <View style={styles.fieldSpacer}>
-                    <MaterialCommunityIcons
-                        name={icon}
-                        color={colours.primary}
-                        size={25} />
+                    {icon &&
+                        <MaterialCommunityIcons
+                            name={icon}
+                            color={colours.primary}
+                            size={25} />
+                    }
                 </View>
+
                 <TextInput
                     style={styles.textInput}
                     placeholder={placeholder}
                     keyboardType={keyboardType}
+                    secureTextEntry={secureTextEntry}
                     selectionColor={colours.primary}
                     onBlur={() => onBlur(fieldname)}
                     onChangeText={handleChange(fieldname)} />

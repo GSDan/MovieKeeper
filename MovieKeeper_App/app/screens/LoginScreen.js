@@ -1,6 +1,5 @@
-import { StyleSheet, Text, TextInput, View, Image } from 'react-native'
+import { StyleSheet, Text, Image } from 'react-native'
 import React, { useState } from 'react'
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Formik } from 'formik';
 import * as Yup from 'yup'
 
@@ -8,6 +7,7 @@ import Mk_Screen from '../components/Mk_Screen'
 import colours from '../config/colours';
 import Mk_Button from '../components/Mk_Button';
 import { useLogin, useRegister } from '../hooks/userAuthentication';
+import Mk_FormItem from '../components/Mk_FormItem';
 
 const validationSchema = (withConfirm) => Yup.object().shape({
     email: Yup.string().required().email().label('Email'),
@@ -62,69 +62,39 @@ export default function LoginScreen()
                 validationSchema={validationSchema(showRegister)}>
                 {({ handleChange, handleSubmit, errors, setFieldTouched, touched }) => (
                     <>
-                        <View style={styles.fieldContainer}>
-                            <View style={styles.fieldSpacer}>
-                                <MaterialCommunityIcons
-                                    name={'email'}
-                                    color={colours.medium}
-                                    size={25} />
-                            </View>
-                            <TextInput
-                                style={styles.textInput}
-                                keyboardType='email-address'
-                                placeholder='Email address'
-                                autoCapitalize='none'
-                                selectionColor={colours.primary}
-                                onBlur={() => setFieldTouched("email")}
-                                autoCorrect={false}
-                                onChangeText={handleChange('email')} />
-                            <View style={styles.fieldSpacer} />
-                        </View>
 
-                        {touched.email &&
-                            <Text style={styles.errorMessage}>{errors.email}</Text>
-                        }
+                        <Mk_FormItem
+                            fieldname={'email'}
+                            placeholder={'Email address'}
+                            icon={'email'}
+                            keyboardType='email-address'
+                            handleChange={handleChange}
+                            onBlur={setFieldTouched}
+                            touched={touched}
+                            errors={errors}
+                        />
 
-                        <View style={styles.fieldContainer}>
-                            <View style={styles.fieldSpacer}>
-                                <MaterialCommunityIcons
-                                    name={'key'}
-                                    color={colours.medium}
-                                    size={25} />
-                            </View>
-                            <TextInput
-                                style={styles.textInput}
-                                placeholder='Password'
-                                autoCapitalize='none'
-                                autoCorrect={false}
-                                secureTextEntry={true}
-                                selectionColor={colours.primary}
-                                onBlur={() => setFieldTouched("password")}
-                                onChangeText={handleChange('password')} />
-                            <View style={styles.fieldSpacer} />
-                        </View>
-
-                        {touched.password &&
-                            <Text style={styles.errorMessage}>{errors.password}</Text>
-                        }
+                        <Mk_FormItem
+                            fieldname={'password'}
+                            placeholder={'Password'}
+                            icon={'key'}
+                            secureTextEntry={true}
+                            handleChange={handleChange}
+                            onBlur={setFieldTouched}
+                            touched={touched}
+                            errors={errors}
+                        />
 
                         {showRegister && (
-                            <>
-                                <View style={styles.fieldContainer}>
-                                    <View style={styles.fieldSpacer} />
-                                    <TextInput
-                                        style={styles.textInput}
-                                        placeholder='Confirm Password'
-                                        autoCapitalize='none'
-                                        autoCorrect={false}
-                                        secureTextEntry={true}
-                                        selectionColor={colours.primary}
-                                        onChangeText={handleChange('confirmPassword')} />
-                                    <View style={styles.fieldSpacer} />
-                                </View>
-
-                                <Text style={styles.errorMessage}>{errors.confirmPassword}</Text>
-                            </>
+                            <Mk_FormItem
+                                fieldname={'confirmPassword'}
+                                placeholder={'Confirm Password'}
+                                secureTextEntry={true}
+                                handleChange={handleChange}
+                                onBlur={setFieldTouched}
+                                touched={touched}
+                                errors={errors}
+                            />
                         )}
 
                         <Mk_Button
@@ -150,20 +120,6 @@ const styles = StyleSheet.create({
         color: 'red',
         textAlign: 'center'
     },
-    fieldContainer: {
-        flexDirection: 'row',
-        marginVertical: 3,
-        marginHorizontal: 10,
-        height: 40,
-        maxWidth: 500,
-        alignSelf: 'center'
-    },
-    fieldSpacer: {
-        flex: 2,
-        marginRight: 10,
-        alignSelf: 'center',
-        alignItems: 'flex-end',
-    },
     loginButton: {
         marginTop: 15
     },
@@ -173,14 +129,6 @@ const styles = StyleSheet.create({
     },
     screen: {
         justifyContent: 'center',
-    },
-    textInput: {
-        flex: 8,
-        borderColor: colours.secondary,
-        borderWidth: 2,
-        padding: 8,
-        paddingLeft: 12,
-        borderRadius: 10
     },
     title: {
         width: '100%',
