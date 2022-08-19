@@ -21,6 +21,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "me.danrichardson.moviekeeper",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./app/assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
