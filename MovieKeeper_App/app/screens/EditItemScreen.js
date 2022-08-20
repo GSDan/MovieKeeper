@@ -314,15 +314,15 @@ export default function EditItemScreen({ navigation, route })
 
 
                     <View style={styles.barcodeBtnsContainer}>
-                        {alternatives?.length > 1 &&
-                            <Mk_Button style={styles.wrongMovieBtn}
-                                text={'Wrong result?'}
-                                icon={'magnify'}
-                                onPress={() =>
-                                {
-                                    setShowAlternatives(true);
-                                }} />
-                        }
+
+                        <Mk_Button style={styles.wrongMovieBtn}
+                            text={'Wrong result?'}
+                            icon={'magnify'}
+                            onPress={() =>
+                            {
+                                setShowAlternatives(true);
+                            }} />
+
                         {barcode &&
                             <Mk_Button style={styles.boxsetBtn}
                                 text={'Add as a boxset'}
@@ -405,10 +405,11 @@ export default function EditItemScreen({ navigation, route })
 
             <Mk_ModalSearchResults
                 show={showAlternatives}
-                data={alternatives}
+                initialData={alternatives}
                 headerText={"Here's the other matches we found"}
                 subHeaderText={"Select the correct movie or show:"}
                 cancelButtonAction={() => setShowAlternatives(false)}
+                showSearchBtn={true}
                 itemButtonAction={(item) =>
                 {
                     setShowAlternatives(false);

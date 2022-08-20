@@ -3,11 +3,10 @@ const EbayAuthToken = require("ebay-oauth-nodejs-client");
 const axios = require("axios");
 const CircularJSON = require('circular-json');
 const admin = require('firebase-admin');
-const imdb = require('imdb-api')
-const nameToImdb = require("name-to-imdb");
 
 admin.initializeApp();
 const db = admin.firestore();
+db.settings({ ignoreUndefinedProperties: true })
 
 const ebayAuthToken = new EbayAuthToken({
   clientId: process.env.EBAY_APPID,
@@ -547,7 +546,7 @@ exports.addBoxsetToLibrary = functions.https.onCall(async (data, context) =>
 
       return libraryItemSnapshot.ref.set(
         {
-          'UserRating': item.UserRating,
+          'UserRating': item.UserRating ?? 0,
           'Added': Date.now(),
           'Formats': data.OwnedFormats
         });
@@ -576,7 +575,7 @@ exports.addCustomToLibrary = functions.https.onCall(async (data, context) =>
   }
 
   let userData = {
-    'UserRating': data.UserRating,
+    'UserRating': data.UserRating ?? 0,
     'Added': Date.now(),
     'Formats': data.OwnedFormats
   };

@@ -33,7 +33,10 @@ export default function EditBoxsetScreen({ navigation, route })
     {
         if (route.params.media)
         {
-            setMedia(route.params.media);
+            setMedia(route.params.media.sort((lhs, rhs) =>
+            {
+                return parseInt(lhs.Year) - parseInt(rhs.Year);;
+            }));
         }
         if (route.params.likelyFormat)
         {
@@ -170,7 +173,7 @@ export default function EditBoxsetScreen({ navigation, route })
 
                     <Mk_CardWithAction
                         movie={item}
-                        rating={userRatings[item.imdbID]}
+                        rating={userRatings[item.imdbID] ?? 0}
                         onRating={updateRating}
                         action={{
                             'icon': 'delete-forever',
@@ -212,7 +215,7 @@ export default function EditBoxsetScreen({ navigation, route })
 
             <Mk_ModalSearchResults
                 show={searchResults.length > 0}
-                data={searchResults}
+                initialData={searchResults}
                 headerText={"Here's what we found"}
                 subHeaderText={"Select the correct movie or show:"}
                 cancelButtonAction={() => setSearchResults([])}

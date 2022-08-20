@@ -264,7 +264,6 @@ export default function LibraryScreen({ navigation })
                             onPress={() => setMediaType('series')} />
                     </View>
                 </View>}
-
                 ListFooterComponentStyle={styles.listFooter}
                 ListFooterComponent={
                     <>
@@ -274,7 +273,6 @@ export default function LibraryScreen({ navigation })
                             </Text>
                         }
                     </>
-
                 }
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={() => fetch()} />

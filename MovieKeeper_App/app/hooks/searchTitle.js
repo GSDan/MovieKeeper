@@ -32,14 +32,32 @@ export const useSearchTitle = () =>
             const url = `https://sg.media-imdb.com/suggests/${title.charAt().toLowerCase()}/${encodeURIComponent(title)}.json`;
             const resp = await fetch(url);
             const parsedResults = JSON.parse((await resp.text()).match(/{.*}/g)).d;
+            const finalResults = parsedResults.reduce((result, imdbRes) => 
+            {
+                let res = {
+                    imdbID: imdbRes.id,
+                    Title: imdbRes.l,
+                    Year: imdbRes.y,
+                    Type: imdbRes.q === 'feature' ? 'Movie' : imdbRes.q,
+                    Poster: imdbRes.i ? imdbRes.i[0] : undefined,
+                    Actors: imdbRes.s
+                };
 
-            if (parsedResults.length === 0)
+                if ((res.Type === 'Movie' || res.Type === 'TV series') && res.Year)
+                {
+                    result.push(res)
+                }
+
+                return result;
+            }, []);
+
+            if (finalResults.length === 0)
             {
                 return setState(
                     {
                         imdbLoading: false,
                         imdbResults: [],
-                        imdbError: "Couldn't find a movie with that title"
+                        imdbError: "Couldn't find a movie or show with that title"
                     });
             }
 
@@ -47,18 +65,7 @@ export const useSearchTitle = () =>
                 {
                     imdbLoading: false,
                     imdbError: null,
-                    imdbResults: parsedResults.map(imdbRes => 
-                    {
-                        return {
-                            imdbID: imdbRes.id,
-                            Title: imdbRes.l,
-                            Year: imdbRes.y,
-                            Type: imdbRes.q === 'feature' ? 'Movie' : imdbRes.q === 'video' ? 'Video' : imdbRes.q,
-                            Poster: imdbRes.i ? imdbRes.i[0] : undefined,
-                            Actors: imdbRes.s
-                        }
-                    })
-
+                    imdbResults: finalResults
                 });
 
         } catch (error)

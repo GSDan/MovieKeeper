@@ -102,6 +102,6 @@ export const loadCachedMatches = async (mediaItems) =>
     }
     catch (error)
     {
-
+        console.log(error)
     }
 }

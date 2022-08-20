@@ -1,12 +1,10 @@
 import { StyleSheet, View, SafeAreaView, ActivityIndicator } from 'react-native'
-import React, { useState } from 'react'
 import Constants from "expo-constants";
 
 import colours from '../config/colours';
 
 export default function Mk_Screen({ children, loading, style })
 {
-    const [media, setMedia] = useState({})
 
     return (
         <SafeAreaView style={[styles.screen, style]}>

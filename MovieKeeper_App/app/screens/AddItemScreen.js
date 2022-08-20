@@ -87,7 +87,10 @@ export default function AddItemScreen({ navigation })
     const openScanner = () =>
     {
         // uncomment to fake barcode scan in simulator
-        //handleBarCodeScanned({ data: '5055201814340' });
+        //handleBarCodeScanned({ data: '9317731158032' });
+        // bttf boxset 5050582788860
+        // bourne boxset 5050582710212
+        // 1917 9317731158032
         // alien 4k 5039036092432
         // alien boxset 5039036050319
         // akira 704400103612
