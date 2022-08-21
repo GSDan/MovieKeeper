@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, Image, Alert } from 'react-native'
 import React, { useState, useEffect } from 'react'
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import { Camera } from 'expo-camera';
 import { Picker } from '@react-native-picker/picker';
 
 import Screen from "../components/Mk_Screen";
@@ -10,6 +10,7 @@ import Mk_Button from '../components/Mk_Button';
 import { getString, loadCachedMatches, setString } from '../config/storage';
 import Mk_TextSearch from '../components/Mk_TextSearch';
 import { useSearchTitle } from '../hooks/searchTitle';
+import { Colors } from 'react-native/Libraries/NewAppScreen';
 
 export default function AddItemScreen({ navigation })
 {
@@ -47,6 +48,7 @@ export default function AddItemScreen({ navigation })
     const [titleInput, setTitleInput] = useState();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [useRearCam, setUseRearCam] = useState(true);
 
     useEffect(() =>
     {
@@ -87,7 +89,7 @@ export default function AddItemScreen({ navigation })
     const openScanner = () =>
     {
         // uncomment to fake barcode scan in simulator
-        //handleBarCodeScanned({ data: '9317731158032' });
+        // handleBarCodeScanned({ data: '9397810275294' });
         // bttf boxset 5050582788860
         // bourne boxset 5050582710212
         // 1917 9317731158032
@@ -113,7 +115,7 @@ export default function AddItemScreen({ navigation })
     {
         if (!hasPermission)
         {
-            const { status } = await BarCodeScanner.requestPermissionsAsync();
+            const { status } = await Camera.requestCameraPermissionsAsync();
             const allowed = status === 'granted';
             setHasPermission(allowed);
             if (allowed) openScanner();
@@ -225,38 +227,52 @@ export default function AddItemScreen({ navigation })
             {/* SCANNING VIEW */}
             {scannerVisible &&
                 <View style={styles.scannerContainer}>
-                    <BarCodeScanner
-                        onBarCodeScanned={handleBarCodeScanned}
+
+                    <Camera
                         style={styles.scanWindow}
-                    />
-                    <View style={styles.regionPickerContainer}>
-                        <Text style={styles.regionPickerLabel}>
-                            Disc bought in:
-                        </Text>
-                        <Picker
-                            style={{ flex: 6 }}
-                            selectedValue={selectedRegion}
-                            onValueChange={(itemValue, itemIndex) =>
-                            {
-                                setSelectedRegion(itemValue);
-                                setString('ebayRegion', itemValue);
-                            }}>
-                            {
-                                marketplaces.map((mpObj) =>
-                                    <Picker.Item
-                                        label={mpObj.display}
-                                        value={mpObj.region}
-                                        key={mpObj.region} />
-                                )
-                            }
-                        </Picker>
+                        onBarCodeScanned={handleBarCodeScanned}
+                        type={useRearCam ? 'back' : 'front'}>
+
+
+                    </Camera>
+
+                    <View style={{ flex: 2 }}>
+                        <View style={styles.regionPickerContainer}>
+                            <Text style={styles.regionPickerLabel}>
+                                Disc bought in:
+                            </Text>
+                            <Picker
+                                style={{ minWidth: 200, width: '35%' }}
+                                selectedValue={selectedRegion}
+                                onValueChange={(itemValue, itemIndex) =>
+                                {
+                                    setSelectedRegion(itemValue);
+                                    setString('ebayRegion', itemValue);
+                                }}>
+                                {
+                                    marketplaces.map((mpObj) =>
+                                        <Picker.Item
+                                            label={mpObj.display}
+                                            value={mpObj.region}
+                                            key={mpObj.region} />
+                                    )
+                                }
+                            </Picker>
+                        </View>
+
+                        <Mk_Button
+                            style={styles.swapCamBtn}
+                            text={'Swap camera'}
+                            icon={'camera-flip'}
+                            onPress={() => setUseRearCam(!useRearCam)} />
+
+                        <Mk_Button
+                            style={styles.closeScanBtn}
+                            text={'Close Scanner'}
+                            icon={'barcode-off'}
+                            onPress={() => setScannerVisible(false)} />
                     </View>
 
-                    <Mk_Button
-                        style={styles.barcodeBtn}
-                        text={'Close Scanner'}
-                        icon={'barcode-off'}
-                        onPress={() => setScannerVisible(false)} />
                 </View>
             }
 
@@ -269,30 +285,34 @@ export default function AddItemScreen({ navigation })
                     {error || imdbError && <Text style={styles.error}>{error ?? imdbError}</Text>}
 
                     <Mk_TextSearch
+                        style={{ flex: 1 }}
                         onChangeText={(text) => setTitleInput(text)}
                         onPress={() => titleInput ? searchTitle(titleInput) : setError('Please enter a movie title')}
                         placeholder={"Enter a movie or show's title..."} />
 
-                    <Text style={{ color: colours.medium, width: '100%', textAlign: 'center', marginTop: 12, marginBottom: 12 }}>
+                    <Text style={styles.or}>
                         or...
                     </Text>
 
-                    <Mk_Button
-                        text={'Scan Barcode'}
-                        icon={'barcode-scan'}
-                        onPress={() => checkPermsOpenScanner()} />
+                    <View style={styles.lowerButtons}>
+                        <Mk_Button
+                            text={'Scan Barcode'}
+                            icon={'barcode-scan'}
+                            onPress={() => checkPermsOpenScanner()} />
 
-                    {hasPermission === false &&
-                        <Text style={styles.permissionsWarning}>
-                            Please allow access to camera
-                        </Text>
-                    }
+                        {hasPermission === false &&
+                            <Text style={styles.permissionsWarning}>
+                                Please allow access to camera
+                            </Text>
+                        }
 
-                    <Mk_Button
-                        style={styles.manualEntryBtn}
-                        text={'Create Custom'}
-                        icon={'format-list-bulleted'}
-                        onPress={() => navigation.navigate("Custom")} />
+                        <Mk_Button
+                            style={styles.manualEntryBtn}
+                            text={'Create Custom'}
+                            icon={'format-list-bulleted'}
+                            onPress={() => navigation.navigate("Custom")} />
+                    </View>
+
                 </View>
             }
         </Screen>
@@ -300,11 +320,24 @@ export default function AddItemScreen({ navigation })
 }
 
 const styles = StyleSheet.create({
+    closeScanBtn: {
+        position: 'absolute',
+        bottom: 20,
+    },
     logo: {
-        height: '22%',
+        flex: 2,
         width: '100%',
-        marginBottom: 20,
-        resizeMode: 'contain'
+        resizeMode: 'contain',
+        paddingTop: 15
+    },
+    lowerButtons: {
+        flex: 3
+    },
+    or: {
+        color: colours.medium,
+        width: '100%',
+        textAlign: 'center',
+        marginBottom: 12
     },
     error: {
         width: '100%',
@@ -350,13 +383,17 @@ const styles = StyleSheet.create({
     },
     regionPickerContainer: {
         flexDirection: "row",
-        width: '100%'
+        width: '100%',
+        justifyContent: 'center'
     },
     regionPickerLabel: {
-        flex: 4,
         textAlign: 'right',
         paddingRight: 10,
         textAlignVertical: 'center'
+    },
+    swapCamBtn: {
+        marginTop: 15,
+        backgroundColor: colours.secondary
     },
     scannerContainer: {
         height: '100%',
@@ -364,7 +401,7 @@ const styles = StyleSheet.create({
     },
     scanWindow: {
         width: '100%',
-        height: '75%',
+        flex: 4,
         marginBottom: 5
     },
     typeOrScanContainer: {

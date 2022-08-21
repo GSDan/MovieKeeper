@@ -88,7 +88,7 @@ export default function ProfileScreen()
         const toRet = "Watching all of your movies would take ";
         if (mins < 180) return `${toRet} ${mins} minutes.`
         if (mins < 48 * 60) return `${toRet} ${(mins / parseFloat(60)).toFixed(1)} hours.`
-        return `${toRet} ${(mins / parseFloat(60) / 24 * 10).toFixed(1)} days!`
+        return `${toRet} ${(mins / parseFloat(60) / 24).toFixed(1)} days!`
     }
 
     const getScoreString = () => 

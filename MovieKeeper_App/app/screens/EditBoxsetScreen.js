@@ -77,7 +77,6 @@ export default function EditBoxsetScreen({ navigation, route })
     {
         let ratingsDict = userRatings;
         ratingsDict[id] = rating;
-        console.log(ratingsDict)
         setUserRatings(ratingsDict);
         setChanged(true);
         setRerenderList(!rerenderList);
@@ -186,7 +185,7 @@ export default function EditBoxsetScreen({ navigation, route })
             <Mk_ModalSearch
                 show={showSearchModal}
                 headerText={"Search for a movie"}
-                subHeaderText={"Please enter the movie's title as accurately as possible."}
+                subHeaderText={"Enter the title of the movie or show"}
                 onResult={(res) =>
                 {
                     setShowSearchModal(false);

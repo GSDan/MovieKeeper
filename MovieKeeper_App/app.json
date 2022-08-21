@@ -2,7 +2,7 @@
   "expo": {
     "name": "MovieKeeper",
     "slug": "MovieKeeper",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "default",
     "icon": "./app/assets/icon.png",
     "userInterfaceStyle": "light",
@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "me.danrichardson.moviekeeper",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./app/assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"

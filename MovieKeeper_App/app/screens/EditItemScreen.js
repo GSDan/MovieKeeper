@@ -302,16 +302,31 @@ export default function EditItemScreen({ navigation, route })
                         initialFormats={initialFormats}
                         onFormatsChange={setSelectedFormats} />
 
-
-                    <View style={styles.barcodeBtnsContainer}>
-
-                        <Mk_Button style={styles.wrongMovieBtn}
-                            text={'Wrong result?'}
-                            icon={'magnify'}
+                    {media.Type === 'series' && ownedSeasons.length > 0 &&
+                        <Mk_Button style={styles.seasonsBtn}
+                            text={getSeasonsString()}
+                            icon={'television-classic'}
                             onPress={() =>
                             {
-                                setShowAlternatives(true);
+                                setShowSelectSeasonsModal(true);
                             }} />
+                    }
+
+                    <View style={styles.bottomContainer}>
+                        <Mk_RoundButton
+                            style={styles.cancelButton}
+                            icon={mode === 'edit' ? 'delete-forever' : 'close'}
+                            onPress={() => mode === 'edit' ? confirmDeletion() : navigation.pop()} />
+
+                        {mode === 'add' || barcode &&
+                            <Mk_Button style={styles.wrongMovieBtn}
+                                text={'Wrong result?'}
+                                icon={'magnify'}
+                                onPress={() =>
+                                {
+                                    setShowAlternatives(true);
+                                }} />
+                        }
 
                         {barcode &&
                             <Mk_Button style={styles.boxsetBtn}
@@ -333,31 +348,13 @@ export default function EditItemScreen({ navigation, route })
                                 }}
                             />
                         }
+
+                        <Mk_RoundButton
+                            style={styles.saveButton}
+                            icon={'content-save'}
+                            onPress={() => saveToDb()} />
                     </View>
-
-
-                    {media.Type === 'series' &&
-                        <Mk_Button style={styles.seasonsBtn}
-                            text={getSeasonsString()}
-                            icon={'television-classic'}
-                            onPress={() =>
-                            {
-                                setShowSelectSeasonsModal(true);
-                            }} />
-                    }
-
-
-                    <Mk_RoundButton
-                        style={styles.cancelButton}
-                        icon={mode === 'edit' ? 'delete-forever' : 'close'}
-                        onPress={() => mode === 'edit' ? confirmDeletion() : navigation.pop()} />
-
-                    <Mk_RoundButton
-                        style={styles.saveButton}
-                        icon={'content-save'}
-                        onPress={() => saveToDb()} />
                 </View>
-
             </View>
 
             <Mk_ModalSearch
@@ -366,13 +363,11 @@ export default function EditItemScreen({ navigation, route })
                 subHeaderText={modalMessage}
                 onResult={(res) =>
                 {
+                    console.log(res)
+                    setAlternatives(res)
                     setShowSetTitleModal(false);
-                    setMedia(res);
+                    setShowAlternatives(true);
                     setModalMessage(defaultModalMessage);
-                    if (res.Type === 'series')
-                    {
-                        initialiseSeasons(parseInt(res.totalSeasons));
-                    }
                 }}
                 secondaryButtonText={'This is a boxset of multiple movies'}
                 secondaryButtonAction={() => navigation.replace("Boxset",
@@ -440,10 +435,11 @@ export default function EditItemScreen({ navigation, route })
 }
 
 const styles = StyleSheet.create({
-    barcodeBtnsContainer: {
+    bottomContainer: {
         position: 'absolute',
         bottom: 10,
-        width: '100%',
+        left: 10,
+        right: 10,
         alignItems: 'center'
     },
     boxsetBtn: {
@@ -581,8 +577,7 @@ const styles = StyleSheet.create({
     },
     seasonsBtn: {
         backgroundColor: colours.secondary,
-        position: 'absolute',
-        bottom: 60
+        marginTop: 15
     },
     sectionHeader: {
         width: '100%',

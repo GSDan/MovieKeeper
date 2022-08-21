@@ -38,7 +38,7 @@ export const useSearchTitle = () =>
                     imdbID: imdbRes.id,
                     Title: imdbRes.l,
                     Year: imdbRes.y,
-                    Type: imdbRes.q === 'feature' ? 'Movie' : imdbRes.q,
+                    Type: imdbRes.q === 'feature' ? 'Movie' : imdbRes.q === 'TV mini-series' ? 'TV series' : imdbRes.q,
                     Poster: imdbRes.i ? imdbRes.i[0] : undefined,
                     Actors: imdbRes.s
                 };

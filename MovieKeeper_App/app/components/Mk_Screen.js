@@ -1,5 +1,4 @@
-import { StyleSheet, View, SafeAreaView, ActivityIndicator } from 'react-native'
-import Constants from "expo-constants";
+import { StyleSheet, View, SafeAreaView, ActivityIndicator, StatusBar } from 'react-native'
 
 import colours from '../config/colours';
 
@@ -7,7 +6,14 @@ export default function Mk_Screen({ children, loading, style })
 {
 
     return (
-        <SafeAreaView style={[styles.screen, style]}>
+        <SafeAreaView style={[{ flex: 1 }, style]}>
+            <StatusBar
+                animated={true}
+                backgroundColor={colours.primary}
+                barStyle={'light-content'}
+                showHideTransition={'fade'}
+                hidden={false}
+            />
             {/* LOADING VIEW */}
             {loading &&
                 <ActivityIndicator animating={loading} style={styles.loadingIndicator} size="large" />
@@ -24,10 +30,6 @@ const styles = StyleSheet.create({
         height: '100%',
         alignSelf: 'center',
         color: colours.primary
-    },
-    screen: {
-        paddingTop: Constants.statusBarHeight,
-        flex: 1,
     },
     view: {
         flex: 1,
