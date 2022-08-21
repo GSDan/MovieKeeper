@@ -299,6 +299,13 @@ const attemptFromTitle = async function (title)
     const omdbResp = await queryOmdb(null, imdbResp[0].imdbID);
     if (omdbResp.success)
     {
+      omdbResp.data.Thumb = omdbResp.data.Poster;
+      if (imdbResp[0].Poster) 
+      {
+        // imdb returns higher res than omdb
+        omdbResp.data.Poster = imdbResp[0].Poster
+      }
+
       omdbResp.imdb = imdbResp;
       return omdbResp;
     }
@@ -353,27 +360,6 @@ const queryOmdb = async function (title = null, id = null)
   return { "success": false }
 }
 
-exports.getMovieFromTitle = functions.https.onCall(async (data, context) =>
-{
-  if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
-
-  try
-  {
-    const omdbResp = await queryOmdb(title = data.title);
-    if (omdbResp.success)
-    {
-      return omdbResp;
-    }
-
-  }
-  catch (error)
-  {
-    console.log(error)
-  }
-
-  return { "success": false };
-});
-
 exports.getMovieFromImdbId = functions.https.onCall(async (data, context) =>
 {
   if (!context.auth || !context.auth.uid) throw new Error("Not logged in.");
@@ -383,9 +369,20 @@ exports.getMovieFromImdbId = functions.https.onCall(async (data, context) =>
     const omdbResp = await queryOmdb(null, data.id);
     if (omdbResp.success)
     {
+      omdbResp.data.Thumb = omdbResp.data.Poster;
+      const imdbResp = await queryImdb(omdbResp.data.Title);
+
+      for (let i = 0; i < imdbResp.length; i++)
+      {
+        if (imdbResp[i].imdbID === omdbResp.data.imdbID && imdbResp[i].Poster)
+        {
+          // imdb returns higher res than omdb
+          omdbResp.data.Poster = imdbResp[0].Poster
+        }
+        break;
+      }
       return omdbResp;
     }
-
   }
   catch (error)
   {
@@ -499,6 +496,7 @@ exports.addBoxsetToLibrary = functions.https.onCall(async (data, context) =>
           'Actors': item.Actors,
           'Director': item.Director,
           'Genre': item.Genre,
+          'Thumb': item.Thumb,
           'Poster': item.Poster,
           'Rated': item.Rated,
           'Runtime': item.Runtime,
@@ -613,6 +611,7 @@ exports.addMovieToLibrary = functions.https.onCall(async (data, context) =>
       'Actors': data.Actors,
       'Director': data.Director,
       'Genre': data.Genre,
+      'Thumb': data.Thumb,
       'Poster': data.Poster,
       'Rated': data.Rated,
       'Runtime': data.Runtime,

@@ -12,8 +12,8 @@ function Mk_Card({ movie, onPress, style })
     return (
         <TouchableOpacity onPress={onPress} style={style}>
             <View style={styles.card}>
-                {movie.Poster && <Image style={styles.image} source={{ uri: movie.Poster }} />}
-                {!movie.Poster && <Image style={styles.image} source={require("../assets/adaptive-icon.png")} />}
+                {movie.Thumb || movie.Poster ? <Image style={styles.image} source={{ uri: movie.Thumb ?? movie.Poster }} /> : null}
+                {!movie.Thumb && !movie.Poster ? <Image style={styles.image} source={require("../assets/adaptive-icon.png")} /> : null}
                 <View style={styles.detailsContainer}>
                     <Text style={styles.title} numberOfLines={2}>
                         {movie.Title}

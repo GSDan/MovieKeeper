@@ -23,12 +23,6 @@ export const getFromBarcode = async (barcode, region) =>
     return await getMovieFromBarcode({ 'barcode': barcode, 'region': region });
 };
 
-export const getFromTitle = async (title) =>
-{
-    const getMovieFromTitle = httpsCallable(functions, 'getMovieFromTitle');
-    return await getMovieFromTitle({ title });
-};
-
 export const getFromId = async (id) =>
 {
     const getMovieFromId = httpsCallable(functions, 'getMovieFromImdbId');
