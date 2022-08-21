@@ -1,7 +1,21 @@
 import { app } from '../config/firebase'
 import { getFunctions, httpsCallable } from 'firebase/functions'
+import { setString } from '../config/storage';
+import Toast from 'react-native-root-toast';
 
 const functions = getFunctions(app);
+
+let loadLibraryCb = null
+export function setLoadLibraryCallback(setter)
+{
+    loadLibraryCb = setter
+    return () => loadLibraryCb = null
+}
+
+export function callLoadLibraryCallback(value)
+{
+    if (loadLibraryCb !== null) loadLibraryCb(value)
+}
 
 export const getFromBarcode = async (barcode, region) =>
 {
@@ -32,13 +46,24 @@ export const addSingleToLibrary = async (movieData, userRating, ownedFormats) =>
     try
     {
         const addMovieToLibrary = httpsCallable(functions, 'addMovieToLibrary');
-        return await addMovieToLibrary({
+        await addMovieToLibrary({
             ...movieData,
             'UserRating': userRating,
             'OwnedFormats': ownedFormats
         });
-    } catch (error)
+
+        Toast.show(`Saved`, {
+            duration: Toast.durations.SHORT,
+        });
+
+        setString('fetch', 'do it');
+        return callLoadLibraryCallback(true);
+    }
+    catch (error)
     {
+        Toast.show(`Error`, {
+            duration: Toast.durations.SHORT,
+        });
         console.log(error)
     }
 };
@@ -48,13 +73,24 @@ export const addCustomToLibrary = async (customData, userRating, ownedFormats) =
     try
     {
         const addCustomToLibrary = httpsCallable(functions, 'addCustomToLibrary');
-        return await addCustomToLibrary({
+        await addCustomToLibrary({
             ...customData,
             'UserRating': userRating,
             'OwnedFormats': ownedFormats
         });
-    } catch (error)
+
+        Toast.show(`Saved`, {
+            duration: Toast.durations.SHORT,
+        });
+
+        setString('fetch', 'do it');
+        return callLoadLibraryCallback(true);
+    }
+    catch (error)
     {
+        Toast.show(`Error`, {
+            duration: Toast.durations.SHORT,
+        });
         console.log(error)
     }
 };
@@ -64,13 +100,24 @@ export const addBoxetToLibrary = async (barcode, mediaItems, ownedFormats) =>
     try
     {
         const addBoxetToLibrary = httpsCallable(functions, 'addBoxsetToLibrary');
-        return await addBoxetToLibrary({
+        await addBoxetToLibrary({
             'Barcode': barcode,
             'MediaItems': mediaItems,
             'OwnedFormats': ownedFormats
         });
-    } catch (error)
+
+        Toast.show(`Saved`, {
+            duration: Toast.durations.SHORT,
+        });
+
+        setString('fetch', 'do it');
+        return callLoadLibraryCallback(true);
+    }
+    catch (error)
     {
+        Toast.show(`Error`, {
+            duration: Toast.durations.SHORT,
+        });
         console.log(error)
     }
 }

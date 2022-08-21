@@ -3,11 +3,12 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { EventRegister } from 'react-native-event-listeners'
 
 import Screen from "../components/Mk_Screen";
 import Card from "../components/Mk_Card";
 import colours from "../config/colours";
-import { getLibrary } from '../api/libraryItems';
+import { getLibrary, setLoadLibraryCallback } from '../api/libraryItems';
 import Mk_Button from '../components/Mk_Button';
 import Mk_RoundButton from '../components/Mk_RoundButton';
 import { setString, setData, getString, removeItem } from '../config/storage';
@@ -57,6 +58,16 @@ export default function LibraryScreen({ navigation })
     const [filterOptions, setFilterOptions] = useState(null);
     const [rerenderList, setRerenderList] = useState(true)
     const [showSortFilterModal, setShowSortFilterModal] = useState(false);
+
+    useEffect(() =>
+    {
+        setLoadLibraryCallback(val =>
+        {
+            if (val) fetch();
+        })
+
+        return () => { setLoadLibraryCallback(null) }
+    }, [])
 
     useEffect(() =>
     {
@@ -215,6 +226,8 @@ export default function LibraryScreen({ navigation })
                 // need to also change key when changing numColumns
                 key={numCols}
                 keyExtractor={(listing) => listing.imdbID + numCols}
+                initialNumToRender={numCols * 5}
+                removeClippedSubviews={true}
                 renderItem={({ item }) => (
                     <Card
                         style={{ flex: 1 / numCols }}

@@ -10,7 +10,6 @@ import colours from '../config/colours';
 import Mk_FormatSelector from '../components/Mk_FormatSelector';
 import { addBoxetToLibrary, getFromId } from '../api/libraryItems';
 import Mk_ModalSearchResults from '../components/Mk_ModalSearchResults';
-import { setString } from '../config/storage';
 
 export default function EditBoxsetScreen({ navigation, route })
 {
@@ -125,24 +124,10 @@ export default function EditBoxsetScreen({ navigation, route })
                 }
             });
 
-            try
-            {
-                await addBoxetToLibrary(barcode, movies, selectedFormats);
-            }
-            catch (error)
-            {
-                if (isMounted) setLoading(false);
-                console.log(error)
-                return;
-            }
+            addBoxetToLibrary(barcode, movies, selectedFormats);
 
-            if (!isMounted) return;
-
-            setLoading(false);
-            setString('fetch', 'do it');
-
-            Toast.show(mode === 'add' ? 'Added boxset' : 'Updated boxset', {
-                duration: Toast.durations.LONG,
+            Toast.show('Saving boxset...', {
+                duration: Toast.durations.SHORT,
             });
 
             navigation.popToTop();
@@ -193,10 +178,8 @@ export default function EditBoxsetScreen({ navigation, route })
             />
 
             <Mk_Button style={media.length < 2 ? styles.finishBtnLocked : styles.finishBtn}
-                text={media.length < 2 ? 'Add at least 2 movies' :
-                    mode === 'add' ? 'Finish' : 'Save changes'}
-                icon={media.length < 2 ? 'upload-lock' :
-                    mode === 'add' ? 'upload' : 'content-save'}
+                text={media.length < 2 ? 'Add at least 2 movies' : 'Finish'}
+                icon={media.length < 2 ? 'upload-lock' : 'upload'}
                 disabled={media.length < 2}
                 onPress={() => setSaveAndClose(true)} />
 

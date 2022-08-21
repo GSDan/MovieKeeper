@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, Image, Alert, Modal, FlatList, useWindowDimensions } from 'react-native'
 import React, { useState, useLayoutEffect, useEffect } from 'react'
 import Toast from 'react-native-root-toast';
+import Checkbox from 'expo-checkbox';
 
 import Screen from "../components/Mk_Screen";
 import colours from '../config/colours';
@@ -12,7 +13,6 @@ import Mk_ImdbScore from '../components/Mk_ImdbScore';
 import Mk_ModalSearch from '../components/Mk_ModalSearch';
 import Mk_FormatSelector from '../components/Mk_FormatSelector';
 import Mk_Button from '../components/Mk_Button';
-import Checkbox from 'expo-checkbox';
 import { loadCachedMatches, setString } from '../config/storage';
 import Mk_ModalSearchResults from '../components/Mk_ModalSearchResults';
 
@@ -145,20 +145,10 @@ export default function EditItemScreen({ navigation, route })
 
         if (ownedSeasons) media.OwnedSeasons = ownedSeasons;
 
-        try
-        {
-            await addSingleToLibrary(media, userRating, selectedFormats);
-        }
-        catch (error)
-        {
-            console.log(error)
-        }
+        addSingleToLibrary(media, userRating, selectedFormats);
 
-        setLoading(false);
-        setString('fetch', 'do it');
-
-        Toast.show((mode === 'edit' ? 'Updated ' : 'Added ') + media.Title, {
-            duration: Toast.durations.LONG,
+        Toast.show(`Saving ${media.Title}...`, {
+            duration: Toast.durations.SHORT,
         });
 
         navigation.popToTop()

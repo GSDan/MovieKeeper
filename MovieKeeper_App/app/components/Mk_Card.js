@@ -1,12 +1,13 @@
 import { StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native'
-import React from 'react'
+import React, { memo } from 'react'
 
 import colours from "../config/colours";
 import Stars from "../components/Mk_Stars";
 import Mk_RottenScore from './Mk_RottenScore';
 import Mk_ImdbScore from './Mk_ImdbScore';
 
-export default function Mk_Card({ movie, onPress, style })
+
+function Mk_Card({ movie, onPress, style })
 {
     return (
         <TouchableOpacity onPress={onPress} style={style}>
@@ -87,3 +88,32 @@ const styles = StyleSheet.create({
         marginRight: 4
     }
 })
+
+// memo does a shallow compare by default, so will always rerender due to our movie prop
+function arePropsEqual(lhs, rhs)
+{
+    if (lhs.movie.imdbID === rhs.movie.imdbID &&
+        lhs.movie.UserRating === rhs.movie.UserRating)
+    {
+        // check if formats have changed
+        if (lhs.movie.Formats === rhs.movie.Formats)
+            return true; // same ref
+
+        if (lhs.movie.Formats.length !== rhs.movie.Formats.length)
+            return false
+
+        if (lhs.movie.Formats == null || rhs.movie.Formats == null)
+            return false
+
+        for (let i = 0; i < lhs.movie.Formats.length; i++) 
+        {
+            if (lhs.movie.Formats[i] !== rhs.movie.Formats[i])
+                return false;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+export default memo(Mk_Card, arePropsEqual);

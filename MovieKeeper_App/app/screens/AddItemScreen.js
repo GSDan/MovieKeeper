@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Image } from 'react-native'
+import { StyleSheet, Text, View, Image, Alert } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import { Picker } from '@react-native-picker/picker';
@@ -7,7 +7,7 @@ import Screen from "../components/Mk_Screen";
 import colours from '../config/colours';
 import { getFromBarcode, getFromId } from '../api/libraryItems';
 import Mk_Button from '../components/Mk_Button';
-import { getData, getString, loadCachedMatches, setString } from '../config/storage';
+import { getString, loadCachedMatches, setString } from '../config/storage';
 import Mk_TextSearch from '../components/Mk_TextSearch';
 import { useSearchTitle } from '../hooks/searchTitle';
 

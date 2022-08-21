@@ -1,5 +1,5 @@
 import { StyleSheet, Image, Text } from 'react-native'
-import React from 'react'
+import React, { memo } from 'react'
 
 const Mk_RottenScore = ({ score }) =>
 {
@@ -21,4 +21,4 @@ const styles = StyleSheet.create({
     }
 });
 
-export default Mk_RottenScore
+export default memo(Mk_RottenScore);
