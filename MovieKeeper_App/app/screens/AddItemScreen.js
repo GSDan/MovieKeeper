@@ -232,8 +232,6 @@ export default function AddItemScreen({ navigation })
                         style={styles.scanWindow}
                         onBarCodeScanned={handleBarCodeScanned}
                         type={useRearCam ? 'back' : 'front'}>
-
-
                     </Camera>
 
                     <View style={{ flex: 2 }}>

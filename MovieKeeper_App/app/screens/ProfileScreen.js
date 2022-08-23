@@ -164,7 +164,7 @@ export default function ProfileScreen()
                 <Text style={styles.fact}>{getScoreString()}</Text>
             </View>
 
-            {Object.keys(libraryStats.genres).length === 0 ?
+            {Object.keys(libraryStats.genres ?? {}).length === 0 ?
 
                 <Text style={[{ flex: 7 }, styles.fact]}>I'm pretty sure I saw a disk under the couch...</Text> :
 
