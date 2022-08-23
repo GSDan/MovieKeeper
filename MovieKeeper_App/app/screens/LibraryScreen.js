@@ -153,15 +153,15 @@ export default function LibraryScreen({ navigation })
                 case 'UserRating':
                 case 'Added':
                     // ints stored as numbers
-                    return first[sortBy] - second[sortBy];
+                    return first[sortBy] ?? 0 - second[sortBy] ?? 0;
                 case 'imdbRating':
                     // floats stored as strings
-                    return parseFloat(first[sortBy]) - parseFloat(second[sortBy]);
+                    return parseFloat(first[sortBy] ?? '0') - parseFloat(second[sortBy] ?? '0');
                 case 'Runtime':
                 case 'ScoreRotten':
                 case 'Year':
                     // strings parsable as ints
-                    return parseInt(first[sortBy]) - parseInt(second[sortBy]);
+                    return parseInt(first[sortBy] ?? '0') - parseInt(second[sortBy] ?? '0');
                 default:
                     // titles without articles (a, the, an)
                     return removeArticles(second['Title'].toLowerCase())

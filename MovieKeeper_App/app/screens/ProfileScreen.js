@@ -1,11 +1,13 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React, { useContext, useEffect, useState } from 'react'
+import { StyleSheet, Text, View, Dimensions } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { PieChart } from 'react-native-svg-charts'
+import randomColor from "randomcolor";
 
 import Screen from "../components/Mk_Screen";
 import { useLogout, AuthContext } from '../hooks/userAuthentication';
 import Mk_Button from '../components/Mk_Button';
-import { useFocusEffect } from '@react-navigation/native';
 import { getData } from '../config/storage';
 import colours from '../config/colours';
 
@@ -13,7 +15,8 @@ export default function ProfileScreen()
 {
     const [libraryData, setLibraryData] = useState([]);
     const [libraryStats, setLibraryStats] = useState([]);
-    const authContext = useContext(AuthContext);
+    const [labelWidth, setLabelWidth] = useState(100);
+    const [selectedSlice, setSelectedSlice] = useState(null);
     const logout = useLogout();
 
     useEffect(() =>
@@ -51,24 +54,28 @@ export default function ProfileScreen()
                 let thisGenres = item.Genre.split(',');
                 thisGenres.forEach(g =>
                 {
-                    if (!genres[g]) genres[g] = 1;
-                    else genres[g]++;
+                    g = g.trim();
+                    if (!genres[g]) genres[g] = { count: 1, colour: randomColor() };
+                    else genres[g].count++;
                 })
             }
         });
 
-        if (Object.keys(genres).length > 0)
+        toRet.genres = genres;
+
+        let most = 0;
+        let top = null;
+
+        for (const g in genres)
         {
-            toRet.topGenreCount = 0;
-            for (const g in genres)
+            if (genres[g].count > most) 
             {
-                if (genres[g] > toRet.topGenreCount)
-                {
-                    toRet.topGenreCount = genres[g];
-                    toRet.topGenre = g;
-                }
+                top = g;
+                most = genres[g].count;
             }
         }
+
+        setSelectedSlice(top);
 
         setLibraryStats(toRet);
     }, [libraryData]);
@@ -97,11 +104,34 @@ export default function ProfileScreen()
         return `Your library's average IMDB score is ${(libraryStats.runningScore / libraryStats.withScore).toFixed(2)}.`;
     }
 
+    const getPieData = () =>
+    {
+        let genres = Object.keys(libraryStats.genres ?? {});
+        if (genres.length === 0) return [];
+
+        return genres.map(g =>
+        {
+            let selected = selectedSlice === g;
+            return {
+                key: g,
+                value: libraryStats.genres[g].count,
+                svg: { fill: libraryStats.genres[g].colour },
+                arc: { outerRadius: selected ? 100 : 90, innerRadius: 65, padAngle: selected ? 0.075 : 0 },
+                onPress: () =>
+                {
+                    setSelectedSlice(g);
+                }
+            }
+        });
+    }
+
     const getTopGenre = () =>
     {
         if (!libraryStats.topGenre) return "I'm pretty sure I saw a disk under the couch..."
         return `Your top genre is ${libraryStats.topGenre}, with ${libraryStats.topGenreCount} entries!`
     }
+
+    const deviceWidth = Dimensions.get('window').width
 
     useFocusEffect(
         React.useCallback(() =>
@@ -123,20 +153,51 @@ export default function ProfileScreen()
                 <Text style={styles.subheader}>The codebase is free and open source! Suggest changes at github.com/GSDan/MovieKeeper</Text>
             </View>
 
-            <MaterialCommunityIcons
-                style={{ color: colours.primary, textAlign: 'center' }}
-                name={'alert-octagram'}
-                size={30} />
+            <View style={{ flex: 4, paddingTop: 20 }}>
+                <MaterialCommunityIcons
+                    style={{ color: colours.primary, textAlign: 'center' }}
+                    name={'alert-octagram'}
+                    size={30} />
 
-            <Text style={styles.fact}>{getCountString()}</Text>
-            <Text style={styles.fact}>{getTimeString()}</Text>
-            <Text style={styles.fact}>{getScoreString()}</Text>
-            <Text style={styles.fact}>{getTopGenre()}</Text>
+                <Text style={styles.fact}>{getCountString()}</Text>
+                <Text style={styles.fact}>{getTimeString()}</Text>
+                <Text style={styles.fact}>{getScoreString()}</Text>
+            </View>
+
+            {Object.keys(libraryStats.genres).length === 0 ?
+
+                <Text style={[{ flex: 7 }, styles.fact]}>I'm pretty sure I saw a disk under the couch...</Text> :
+
+                <View style={{ flex: 7 }}>
+                    <Text style={styles.pieHeader}>Your owned movie genres:</Text>
+
+                    <View style={{ justifyContent: 'center', flex: 6 }}>
+                        <PieChart
+                            style={{ height: '100%' }}
+                            data={getPieData()}
+                        />
+
+                        {selectedSlice ?
+                            <Text
+                                onLayout={({ nativeEvent: { layout: { width } } }) =>
+                                {
+                                    setLabelWidth(width);
+                                }}
+                                style={{
+                                    position: 'absolute',
+                                    left: deviceWidth / 2 - labelWidth / 2,
+                                    textAlign: 'center'
+                                }}>{selectedSlice}: {libraryStats.genres[selectedSlice].count}</Text>
+                            : null}
+                    </View>
+                </View>
+
+            }
+
+
+
 
             <View style={styles.logoutContainer}>
-                <Text style={styles.currentUser}>
-                    You're logged in as {authContext.currentUser.email}
-                </Text>
                 <Mk_Button
                     text={'Sign Out'}
                     style={styles.logoutButton}
@@ -154,9 +215,9 @@ const styles = StyleSheet.create({
         color: colours.secondary
     },
     fact: {
-        marginVertical: 10,
+        marginVertical: 8,
         textAlign: 'center',
-        fontSize: 18,
+        fontSize: 16,
         marginHorizontal: 15,
         color: colours.medium
     },
@@ -168,24 +229,30 @@ const styles = StyleSheet.create({
         marginBottom: 8
     },
     headerContainer: {
-        position: 'absolute',
-        top: 30,
         width: '100%',
-        marginBottom: 40,
         backgroundColor: colours.primary,
-        padding: 20
+        paddingHorizontal: 20,
+        paddingBottom: 10,
+        paddingTop: 8,
+        flex: 3
     },
     logoutContainer: {
-        position: 'absolute',
-        bottom: 10,
+        flex: 1,
         width: '100%'
+    },
+    pieHeader: {
+        textAlignVertical: 'bottom',
+        textAlign: 'center',
+        flex: 1,
+        fontSize: 16,
+        color: colours.medium
     },
     screen: {
         justifyContent: 'center'
     },
     subheader: {
         textAlign: 'center',
-        fontSize: 16,
+        fontSize: 14,
         color: colours.white
     }
 });
