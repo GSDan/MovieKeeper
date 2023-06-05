@@ -10,7 +10,6 @@ import Mk_Button from '../components/Mk_Button';
 import { getString, loadCachedMatches, setString } from '../config/storage';
 import Mk_TextSearch from '../components/Mk_TextSearch';
 import { useSearchTitle } from '../hooks/searchTitle';
-import { Colors } from 'react-native/Libraries/NewAppScreen';
 
 export default function AddItemScreen({ navigation })
 {

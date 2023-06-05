@@ -1,3 +1,4 @@
+import "react-native-url-polyfill/auto"
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, useWindowDimensions } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native';

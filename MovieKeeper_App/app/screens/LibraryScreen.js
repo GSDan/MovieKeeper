@@ -168,6 +168,13 @@ export default function LibraryScreen({ navigation })
                         .localeCompare(removeArticles(first['Title'].toLowerCase()));
             }
         });
+
+        // console.log('Title,Year,Rotten Score,IMDB Score')
+        // for (let i = 0; i < sorted.length; i++)
+        // {
+        //     console.log(`"${sorted[i].Title}",${sorted[i].Year},${sorted[i].ScoreRotten ?? '??'},${sorted[i].imdbRating ?? '??'}`)
+        // }
+
         setSortedData(sorted);
         setRerenderList(!rerenderList);
     }, [sortBy, sortAsc, mediaType, filterField, filterValue, libraryData])

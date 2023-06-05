@@ -48,7 +48,7 @@ export default function Mk_Stars({ value, isTouchable, onPress, containerStyle, 
 
 const styles = StyleSheet.create({
     MainContainer: {
-        paddingTop: Platform.OS === 'ios' ? 20 : 0,
+        paddingTop: 0,
     },
     childView: {
         flexDirection: 'row'
