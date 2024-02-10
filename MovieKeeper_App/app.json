@@ -2,7 +2,7 @@
   "expo": {
     "name": "Movie Keeper",
     "slug": "MovieKeeper",
-    "version": "1.1.2",
+    "version": "1.2",
     "orientation": "default",
     "icon": "./app/assets/icon.png",
     "userInterfaceStyle": "light",
@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "me.danrichardson.moviekeeper",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./app/assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
@@ -30,6 +30,23 @@
     },
     "web": {
       "favicon": "./app/assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "895c9f61-a29b-4864-8342-b71fab04a02e"
+      }
     }
   }
 }
