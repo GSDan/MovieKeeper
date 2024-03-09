@@ -92,7 +92,7 @@ export default function LibraryScreen({ navigation }) {
 				<View style={{ flexDirection: 'row' }}>
 					<TouchableOpacity
 						onPress={() => {
-							setShowSearchModal(true);
+							setShowSearchModal((current) => !current);
 						}}>
 						<MaterialCommunityIcons
 							style={{ color: colours.primary }}
@@ -364,30 +364,23 @@ export default function LibraryScreen({ navigation }) {
 				}
 			/>
 
-			<Modal
-				visible={showSearchModal}
-				animationType={'slide'}
-				transparent={true}>
+			{showSearchModal && (
 				<View style={styles.searchModal}>
-					<Text style={styles.searchTitle}>
-						Search your library by title, actor, or director
-					</Text>
 					<Mk_TextSearch
 						style={{ flex: 1 }}
 						onChangeText={(text) => setSearchTerm(text)}
-						onPress={() => setSearchTerm(null)}
+						onPress={() => {
+							setShowSearchModal(false);
+							setSearchTerm(null);
+						}}
 						value={searchTerm}
 						icon={'cancel'}
-						placeholder={'Search for...'}
+						placeholder={'Search for title, actor, or director...'}
 						btnColour={colours.danger}
-					/>
-					<Mk_Button
-						style={styles.searchClose}
-						text={'Close'}
-						onPress={() => setShowSearchModal(false)}
+						shouldAutoFocus={showSearchModal}
 					/>
 				</View>
-			</Modal>
+			)}
 
 			<Modal visible={showSortFilterModal} animationType={'slide'}>
 				<View style={styles.filtersModal}>
@@ -468,11 +461,11 @@ const styles = StyleSheet.create({
 	},
 	searchModal: {
 		width: '100%',
-		height: '25%',
-		minHeight: 220,
-		backgroundColor: colours.transparentModal,
-		marginVertical: '45%',
-		paddingVertical: 10,
+		maxWidth: 800,
+		alignSelf: 'center',
+		zIndex: 1,
+		position: 'absolute',
+		bottom: 15,
 	},
 	searchTitle: {
 		marginTop: 20,

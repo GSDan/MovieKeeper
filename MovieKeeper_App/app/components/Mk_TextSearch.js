@@ -12,6 +12,7 @@ const Mk_TextSearch = ({
 	icon = 'magnify',
 	value = null,
 	btnColour = colours.secondary,
+	shouldAutoFocus = false,
 }) => {
 	return (
 		<View style={[styles.searchContainer, style]}>
@@ -19,7 +20,8 @@ const Mk_TextSearch = ({
 				style={styles.searchInput}
 				placeholder={placeholder}
 				value={value}
-				onChangeText={onChangeText}></TextInput>
+				onChangeText={onChangeText}
+				autoFocus={shouldAutoFocus}></TextInput>
 
 			{onPress != null && (
 				<Mk_RoundButton
