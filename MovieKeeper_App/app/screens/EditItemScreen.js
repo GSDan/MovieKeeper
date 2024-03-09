@@ -28,7 +28,6 @@ import Mk_FormatSelector from '../components/Mk_FormatSelector';
 import Mk_Button from '../components/Mk_Button';
 import { loadCachedMatches, setString } from '../config/storage';
 import Mk_ModalSearchResults from '../components/Mk_ModalSearchResults';
-import { useGetTrivia } from '../hooks/getTrivia';
 
 export default function EditItemScreen({ navigation, route }) {
 	const defaultModalMessage =
@@ -50,9 +49,6 @@ export default function EditItemScreen({ navigation, route }) {
 	const [alternatives, setAlternatives] = useState([]);
 	const [showAlternatives, setShowAlternatives] = useState(false);
 	const [error, setError] = useState(null);
-
-	const [getTrivia, resetResults, { aiLoading, aiError, aiResult }] =
-		useGetTrivia();
 
 	const barcode = route.params.barcode;
 	const existingFormats = route.params.formats;
@@ -99,8 +95,6 @@ export default function EditItemScreen({ navigation, route }) {
 					if (route.params.media.OwnedSeasons) {
 						setOwnedSeasons(route.params.media.OwnedSeasons);
 					}
-
-					//getTrivia(media.Title, media.imdbID);
 				} else {
 					if (route.params.alternatives) {
 						setAlternatives(route.params.alternatives);

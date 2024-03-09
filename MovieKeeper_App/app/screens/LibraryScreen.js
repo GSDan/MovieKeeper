@@ -7,9 +7,8 @@ import {
 	TouchableOpacity,
 	Modal,
 	useWindowDimensions,
-	TextInput,
 } from 'react-native';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

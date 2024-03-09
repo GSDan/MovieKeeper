@@ -11,6 +11,7 @@ import navigationTheme from './app/navigation/navigationTheme';
 import LibraryScreen from './app/screens/LibraryScreen';
 import AddItemScreen from './app/screens/AddItemScreen';
 import EditItemScreen from './app/screens/EditItemScreen';
+import QuizScreen from './app/screens/QuizScreen';
 import ProfileScreen from './app/screens/ProfileScreen';
 import LoginScreen from './app/screens/LoginScreen';
 import { useAuthChange, AuthContext } from './app/hooks/userAuthentication';
@@ -123,20 +124,20 @@ export default function App() {
 					),
 				}}
 			/>
-			{/* <Tabs.Screen
-				name="Add"
-				component={AddStackNavigator}
+			<Tabs.Screen
+				name="Trivia Quiz"
+				component={QuizScreen}
 				options={{
 					headerShown: false,
 					tabBarIcon: ({ color, size }) => (
 						<MaterialCommunityIcons
-							name="plus-circle"
+							name="gamepad-variant"
 							color={color}
 							size={size}
 						/>
 					),
 				}}
-			/> */}
+			/>
 			<Tabs.Screen
 				name="Profile"
 				component={ProfileScreen}
