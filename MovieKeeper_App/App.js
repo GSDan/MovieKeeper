@@ -29,6 +29,7 @@ export default function App() {
 	const AddStack = createNativeStackNavigator();
 	const AddStackNavigator = () => (
 		<AddStack.Navigator
+			name="Add"
 			screenOptions={{
 				orientation: allowedOrientation,
 			}}>
@@ -85,6 +86,15 @@ export default function App() {
 					animation: 'slide_from_bottom',
 				}}
 			/>
+			<ViewStack.Screen
+				name="Add"
+				component={AddStackNavigator}
+				options={{
+					headerShown: false,
+					presentation: 'modal',
+					animation: 'slide_from_bottom',
+				}}
+			/>
 		</ViewStack.Navigator>
 	);
 
@@ -113,7 +123,7 @@ export default function App() {
 					),
 				}}
 			/>
-			<Tabs.Screen
+			{/* <Tabs.Screen
 				name="Add"
 				component={AddStackNavigator}
 				options={{
@@ -126,7 +136,7 @@ export default function App() {
 						/>
 					),
 				}}
-			/>
+			/> */}
 			<Tabs.Screen
 				name="Profile"
 				component={ProfileScreen}

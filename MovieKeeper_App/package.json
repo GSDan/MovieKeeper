@@ -16,6 +16,8 @@
     "@react-navigation/bottom-tabs": "^6.3.1",
     "@react-navigation/native": "^6.0.10",
     "@react-navigation/native-stack": "^6.6.2",
+    "@rneui/base": "^4.0.0-rc.7",
+    "@rneui/themed": "^4.0.0-rc.8",
     "apisauce": "^2.1.5",
     "expo": "~50.0.6",
     "expo-barcode-scanner": "~12.9.2",

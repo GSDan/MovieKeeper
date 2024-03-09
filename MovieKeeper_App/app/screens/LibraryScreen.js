@@ -13,6 +13,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FAB } from '@rneui/themed';
 
 import Screen from '../components/Mk_Screen';
 import Card from '../components/Mk_Card';
@@ -262,6 +263,10 @@ export default function LibraryScreen({ navigation }) {
 		});
 	};
 
+	const openAdd = () => {
+		navigation.navigate('Add');
+	};
+
 	const numCols = Math.max(Math.floor(useWindowDimensions().width / 400), 1);
 
 	return (
@@ -364,6 +369,14 @@ export default function LibraryScreen({ navigation }) {
 				}
 			/>
 
+			<FAB
+				placement="right"
+				visible={!showSearchModal}
+				icon={{ name: 'add', color: 'white' }}
+				color={colours.primary}
+				onPress={() => openAdd()}
+			/>
+
 			{showSearchModal && (
 				<View style={styles.searchModal}>
 					<Mk_TextSearch
@@ -453,6 +466,9 @@ const styles = StyleSheet.create({
 		width: '100%',
 		alignItems: 'center',
 		justifyContent: 'center',
+	},
+	fab: {
+		color: colours.primary,
 	},
 	filtersModal: {
 		width: '100%',
