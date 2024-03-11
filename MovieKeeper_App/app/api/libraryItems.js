@@ -114,5 +114,17 @@ export const deleteFromLibrary = async (Type, id) => {
 
 export const getTrivia = async () => {
 	const getTrivia = httpsCallable(functions, 'getTrivia');
-	return await getTrivia({ NumChoices: 3 });
+
+	return getTrivia({ NumChoices: 6 })
+		.then((result) => {
+			return { result: result.data, err: null };
+		})
+		.catch((err) => {
+			let errorMessage =
+				err.code === 'functions/invalid-argument'
+					? "You haven't got enough movies registered yet. Come back and try again once you'd added a few more."
+					: 'There was a gremlin in the projector room. Please try again later.';
+
+			return { result: null, err: errorMessage };
+		});
 };

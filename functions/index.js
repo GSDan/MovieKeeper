@@ -374,14 +374,18 @@ exports.getMovieFromImdbId = functions.https.onCall(async (data, context) => {
 });
 
 exports.getTrivia = functions.https.onCall(async (data, context) => {
-	if (!context.auth || !context.auth.uid) throw new Error('Not logged in.');
+	if (!context.auth || !context.auth.uid)
+		throw new functions.https.HttpsError('unauthenticated', 'Not logged in.');
 
 	const userMovieCol = await db
 		.collection(`Users/${context.auth.uid}/Movies`)
 		.get();
 
-	if (userMovieCol.empty || userMovieCol.length < data.NumChoices) {
-		throw new Error('Not enough movies registered');
+	if (userMovieCol.empty || userMovieCol.docs.length < data.NumChoices) {
+		throw new functions.https.HttpsError(
+			'invalid-argument',
+			'Not enough movies registered'
+		);
 	}
 
 	let randomIds = [];

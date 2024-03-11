@@ -13,4 +13,5 @@ export default {
 	danger: '#ff5252',
 	save: '#4CAF50',
 	transparentModal: '#ffffffe6',
+	green: '#00ad00',
 };
